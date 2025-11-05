@@ -5,7 +5,7 @@ AI-powered Chrome extension that detects phishing websites in real-time.
 ## 🚀 Development Progress
 
 - [x] Phase 1: Basic extension structure
-- [ ] Phase 2: Content script for page analysis
+- [x] Phase 2: Content script for page analysis
 - [ ] Phase 3: Risk scoring system
 - [ ] Phase 4: Warning system
 - [ ] Phase 5: Backend server
