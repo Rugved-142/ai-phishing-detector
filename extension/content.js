@@ -18,7 +18,25 @@ function extractBasicFeatures() {
     urlDepth: url.split('/').length - 3
   };
 }
-
+function extractDOMFeatures() {
+  const passwordFields = document.querySelectorAll('input[type="password"]');
+  const forms = document.querySelectorAll('form');
+  const inputs = document.querySelectorAll('input');
+  const hiddenFields = document.querySelectorAll('input[type="hidden"]');
+  const iframes = document.querySelectorAll('iframe');
+  
+  return {
+    hasPasswordField: passwordFields.length > 0,
+    passwordFieldCount: passwordFields.length,
+    formCount: forms.length,
+    inputFieldCount: inputs.length,
+    hasHiddenFields: hiddenFields.length > 0,
+    hiddenFieldCount: hiddenFields.length,
+    iframeCount: iframes.length,
+    iframePresent: iframes.length > 0,
+    hasMultipleForms: forms.length > 1
+  };
+}
 
 //Main analysis function
 function analyzePage() {
@@ -70,9 +88,57 @@ function calculateRisk(features) {
   if (features.subdomainCount > 3) score += 10;
   if (features.urlDepth > 5) score += 5;
   
+  // DOM-based checks
+  if (features.hasPasswordField && !features.isHTTPS) score += 30;
+  if (features.iframePresent) score += 5;
+  if (features.hasHiddenFields) score += 5;
+  if (features.formCount > 3) score += 5;
+
+  // Link-based checks
+  if (features.externalLinkRatio > 75) score += 10;
+  if (features.hasExcessiveExternalLinks) score += 5;
+  if (features.suspiciousRedirects > 0) score += 10;
+  
   return Math.min(score, 100);
 }
 
+function analyzeLinks() {
+  const links = document.querySelectorAll('a[href]');
+  let externalCount = 0;
+  let internalCount = 0;
+  let suspiciousRedirects = 0;
+  
+  links.forEach(link => {
+    try {
+      const linkUrl = new URL(link.href);
+      
+      // Check if external
+      if (linkUrl.hostname === window.location.hostname) {
+        internalCount++;
+      } else {
+        externalCount++;
+      }
+      
+      // Check for suspicious redirects
+      if (link.href.includes('redirect') || link.href.includes('url=')) {
+        suspiciousRedirects++;
+      }
+    } catch (e) {
+      // Invalid URL
+    }
+  });
+  
+  const totalLinks = links.length;
+  
+  return {
+    totalLinks: totalLinks,
+    externalLinks: externalCount,
+    internalLinks: internalCount,
+    suspiciousRedirects: suspiciousRedirects,
+    externalLinkRatio: totalLinks > 0 ? (externalCount / totalLinks) * 100 : 0,
+    hasExcessiveExternalLinks: externalCount > 50
+  };
+}
 // Run analysis when page loads
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', analyzePage);
