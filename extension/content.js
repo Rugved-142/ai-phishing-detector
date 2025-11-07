@@ -1,43 +1,52 @@
 // AI Phishing Detector - Content Script
-console.log('🛡️ AI Phishing Detector is analyzing:', window.location.href);
+console.log('🛡️ AI Phishing Detector v3 is analyzing:', window.location.href);
 
-// Analyze current page
-function analyzePage() {
+
+function extractBasicFeatures() {
   const url = window.location.href;
   const hostname = window.location.hostname;
   
-  // Extract basic features
-  const features = {
+  return {
     url: url,
     hostname: hostname,
     isHTTPS: url.startsWith('https://'),
-    hasIP: /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(hostname),
     urlLength: url.length,
+    hasIP: /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(hostname),
     hasAtSymbol: url.includes('@'),
-    hasSuspiciousWords: checkSuspiciousWords(url),
-    hasPasswordField: checkPasswordFields(),
-    formCount: document.querySelectorAll('form').length,
-    externalLinks: countExternalLinks()
+    subdomainCount: hostname.split('.').length - 2,
+    hasDashInDomain: hostname.includes('-'),
+    urlDepth: url.split('/').length - 3
+  };
+}
+
+
+//Main analysis function
+function analyzePage() {
+  
+  const basicFeatures = extractBasicFeatures();
+  
+  // Build features object
+  const features = {
+    ...basicFeatures
   };
   
   // Calculate risk score
   const riskScore = calculateRisk(features);
   
   // Log results
-  console.log('Page features:', features);
-  console.log('Risk score:', riskScore);
+  console.log('📊 Risk score:', riskScore);
   
-  // Send to extension
+  // Send to background script
   chrome.runtime.sendMessage({
     type: 'ANALYSIS_COMPLETE',
-    url: url,
+    url: features.url,
     features: features,
     riskScore: riskScore
   });
   
-  // Store results
+  // Store results in local storage
   chrome.storage.local.set({
-    [hostname]: {
+    [features.hostname]: {
       riskScore: riskScore,
       features: features,
       timestamp: Date.now()
@@ -47,53 +56,19 @@ function analyzePage() {
   return { features, riskScore };
 }
 
-// Check for suspicious words
-function checkSuspiciousWords(url) {
-  const suspicious = [
-    'verify', 'account', 'secure', 'update',
-    'suspend', 'confirm', 'banking', 'paypal'
-  ];
-  const urlLower = url.toLowerCase();
-  return suspicious.some(word => urlLower.includes(word));
-}
-
-// Check for password fields
-function checkPasswordFields() {
-  const passwordFields = document.querySelectorAll('input[type="password"]');
-  return passwordFields.length > 0;
-}
-
-// Count external links
-function countExternalLinks() {
-  const links = document.querySelectorAll('a[href]');
-  let externalCount = 0;
-  
-  links.forEach(link => {
-    try {
-      const linkUrl = new URL(link.href);
-      if (linkUrl.hostname !== window.location.hostname) {
-        externalCount++;
-      }
-    } catch (e) {
-      // Invalid URL
-    }
-  });
-  
-  return externalCount;
-}
-
-// Calculate risk score
+/**
+ * Calculate risk score based on features
+ */
 function calculateRisk(features) {
   let score = 0;
   
-  // Basic scoring
+  // Basic URL checks
   if (!features.isHTTPS) score += 25;
   if (features.hasIP) score += 30;
   if (features.urlLength > 100) score += 10;
   if (features.hasAtSymbol) score += 25;
-  if (features.hasSuspiciousWords) score += 15;
-  if (features.hasPasswordField && !features.isHTTPS) score += 30;
-  if (features.externalLinks > 50) score += 10;
+  if (features.subdomainCount > 3) score += 10;
+  if (features.urlDepth > 5) score += 5;
   
   return Math.min(score, 100);
 }
@@ -111,6 +86,7 @@ new MutationObserver(() => {
   const url = location.href;
   if (url !== lastUrl) {
     lastUrl = url;
+    console.log('🔄 URL changed, re-analyzing...');
     analyzePage();
   }
 }).observe(document, { subtree: true, childList: true });
