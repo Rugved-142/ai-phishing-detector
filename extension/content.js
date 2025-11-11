@@ -45,7 +45,9 @@ function analyzePage() {
   
   // Build features object
   const features = {
-    ...basicFeatures
+    ...basicFeatures,
+    ...domFeatures,
+    ...linkFeatures
   };
   
   // Calculate risk score
