@@ -1,4 +1,3 @@
-```markdown
 # 🛡️ AI Phishing Detector
 
 AI-powered Chrome extension that detects phishing websites in real-time using advanced pattern recognition.
@@ -65,21 +64,3 @@ ai-phishing-detector/
 - Risk factors: 20+
 - Zero external dependencies
 - Works completely offline
-
-## 🤝 Contributing
-
-Contributions welcome! Please open an issue or submit a PR.
-
-## 📄 License
-
-MIT License
-
-## 📞 Contact
-
-**Developer**: Rugved Deshpande  
-**GitHub**: [Issues](https://github.com/yourusername/ai-phishing-detector/issues)
-
----
-
-**Version**: 0.4.0 | **Status**: Active Development
-```
