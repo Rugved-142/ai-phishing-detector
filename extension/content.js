@@ -56,10 +56,11 @@ function analyzePage() {
   };
   
   // Calculate risk score
-  const riskScore = calculateRisk(features);
+  const riskScore = calculateWeightedRisk(features);
   
-  // Log results
-  console.log('📊 Risk score:', riskScore);
+  console.log('📊 Weighted risk score:', riskScore);
+  console.log('⚠️ Risk factors:', features.riskFactors);
+  console.log('🔍 All features:', features);
   
   // Send to background script
   chrome.runtime.sendMessage({
@@ -81,33 +82,91 @@ function analyzePage() {
   return { features, riskScore };
 }
 
-/**
- * Calculate risk score based on features
- */
-function calculateRisk(features) {
-  let score = 0;
-  
-  // Basic URL checks
-  if (!features.isHTTPS) score += 25;
-  if (features.hasIP) score += 30;
-  if (features.urlLength > 100) score += 10;
-  if (features.hasAtSymbol) score += 25;
-  if (features.subdomainCount > 3) score += 10;
-  if (features.urlDepth > 5) score += 5;
-  
-  // DOM-based checks
-  if (features.hasPasswordField && !features.isHTTPS) score += 30;
-  if (features.iframePresent) score += 5;
-  if (features.hasHiddenFields) score += 5;
-  if (features.formCount > 3) score += 5;
 
-  // Link-based checks
-  if (features.externalLinkRatio > 75) score += 10;
-  if (features.hasExcessiveExternalLinks) score += 5;
-  if (features.suspiciousRedirects > 0) score += 10;
+function calculateWeightedRisk(features) {
+  let score = 0;
+  const riskFactors = [];
+  
+  // Critical factors (15-20 points each)
+  if (!features.isHTTPS) {
+    score += 20;
+    riskFactors.push('No HTTPS encryption');
+  }
+  if (features.hasIP) {
+    score += 20;
+    riskFactors.push('Uses IP address instead of domain');
+  }
+  if (features.hasPasswordField && !features.isHTTPS) {
+    score += 25;
+    riskFactors.push('Insecure password field');
+  }
+  if (features.hasHomograph) {
+    score += 20;
+    riskFactors.push('Contains lookalike characters');
+  }
+  
+  // High risk factors (10-15 points)
+  if (features.hasAtSymbol) {
+    score += 15;
+    riskFactors.push('Contains @ symbol in URL');
+  }
+  if (features.suspiciousWordCount > 3) {
+    score += 15;
+    riskFactors.push('Multiple suspicious keywords');
+  }
+  if (features.urlLength > 100) {
+    score += 10;
+    riskFactors.push('Unusually long URL');
+  }
+  if (features.hasMisleadingDomain) {
+    score += 15;
+    riskFactors.push('Uses suspicious domain extension');
+  }
+  
+  // Medium risk factors (5-10 points)
+  if (features.subdomainCount > 3) {
+    score += 10;
+    riskFactors.push('Excessive subdomains');
+  }
+  if (features.externalLinkRatio > 75) {
+    score += 10;
+    riskFactors.push('Too many external links');
+  }
+  if (features.hasUrgencyIndicators) {
+    score += 8;
+    riskFactors.push('Contains urgency pressure');
+  }
+  if (features.hasDoubleSlash) {
+    score += 8;
+    riskFactors.push('Suspicious URL structure');
+  }
+  
+  // Low risk factors (2-5 points)
+  if (features.iframePresent) {
+    score += 5;
+    riskFactors.push('Contains iframes');
+  }
+  if (features.hasHiddenFields) {
+    score += 5;
+    riskFactors.push('Has hidden form fields');
+  }
+  if (features.formCount > 3) {
+    score += 3;
+    riskFactors.push('Multiple forms detected');
+  }
+  if (features.hasDashInDomain) {
+    score += 3;
+    riskFactors.push('Domain contains dashes');
+  }
+  if (features.urlDepth > 5) {
+    score += 3;
+    riskFactors.push('Deep URL structure');
+  }
+  
+  // Store risk factors for display
+  features.riskFactors = riskFactors;
   
   return Math.min(score, 100);
-}
 
 function analyzeLinks() {
   const links = document.querySelectorAll('a[href]');
