@@ -18,6 +18,7 @@ function extractBasicFeatures() {
     urlDepth: url.split('/').length - 3
   };
 }
+
 function extractDOMFeatures() {
   const passwordFields = document.querySelectorAll('input[type="password"]');
   const forms = document.querySelectorAll('form');
@@ -42,12 +43,16 @@ function extractDOMFeatures() {
 function analyzePage() {
   
   const basicFeatures = extractBasicFeatures();
+  const domFeatures = extractDOMFeatures();
+  const linkFeatures = analyzeLinks();
+  const patternFeatures = detectSuspiciousPatterns();
   
   // Build features object
   const features = {
     ...basicFeatures,
     ...domFeatures,
-    ...linkFeatures
+    ...linkFeatures,
+    ...patternFeatures
   };
   
   // Calculate risk score
@@ -141,6 +146,70 @@ function analyzeLinks() {
     hasExcessiveExternalLinks: externalCount > 50
   };
 }
+
+function detectSuspiciousPatterns(){
+  const url = window.location.href.toLowerCase();
+  const pageText = document.body.innerText.toLowerCase();
+  const title = document.title.toLowerCase();
+
+  const suspiciousWords = [
+    'verify', 'account', 'secure', 'update', 'suspend',
+    'confirm', 'banking', 'paypal', 'amazon', 'microsoft',
+    'refund', 'locked', 'expired', 'validate', 'restore'
+  ];
+
+  const urgencyWords = [
+    'urgent', 'immediate', 'expire', 'deadline', 'limited',
+    'act now', 'hurry', 'quick', 'fast', 'ends today'
+  ];
+
+  const financialWords = [
+    'credit card', 'social security', 'ssn', 'tax', 'irs',
+    'bitcoin', 'cryptocurrency', 'wallet', 'payment'
+  ];
+
+  let suspiciousCount = 0;
+  let urgencyCount = 0;
+  let financialCount = 0;
+
+  suspiciousWords.forEach(word => {
+    if(url.includes(word) || pageText.includes(word) || title.includes(word))
+    {
+      suspiciousCount++;
+    }
+  });
+
+  urgencyWords.forEach(word =>{
+    if(url.includes(word) || pageText.includes(word) || title.includes(word))
+    {
+      urgencyCount++;
+    }
+  });
+  financialWords.forEach(word =>{
+    if(url.includes(word) || pageText.includes(word) || title.includes(word))
+    {
+      financialCount++;
+    }
+  });
+
+  // check for common phishing patterns
+  const hasDoubleSlash = url.includes('//') && url.indexOf('//') > 8;
+  const hasMisleadingDomain = /\.(tk|ml|ga|cf)$/.test(window.location.hostname);
+  const hasHomograph = /[а-яА-Я]/.test(url); // Cyrillic characters
+
+  return{
+    uspiciousWordCount: suspiciousCount,
+    urgencyWordCount: urgencyCount,
+    financialTermCount: financialCount,
+    hasSuspiciousPatterns: suspiciousCount > 2,
+    hasUrgencyIndicators: urgencyCount > 1,
+    hasFinancialTerms: financialCount > 0,
+    hasDoubleSlash: hasDoubleSlash,
+    hasMisleadingDomain: hasMisleadingDomain,
+    hasHomograph: hasHomograph
+  }
+}
+
 // Run analysis when page loads
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', analyzePage);
