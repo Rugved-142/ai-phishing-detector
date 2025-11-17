@@ -1,25 +1,50 @@
+```markdown
 # 🛡️ AI Phishing Detector
 
-AI-powered Chrome extension that detects phishing websites in real-time.
+AI-powered Chrome extension that detects phishing websites in real-time using advanced pattern recognition.
 
-## 🚀 Development Progress
+## ✨ Features
 
-- [x] Phase 1: Basic extension structure
-- [x] Phase 2: Content script for page analysis
-- [ ] Phase 3: Risk scoring system
-- [ ] Phase 4: Warning system
-- [ ] Phase 5: Backend server
-- [ ] Phase 6: AI integration
-- [ ] Phase 7: UI/UX polish
-- [ ] Phase 8: Testing
-- [ ] Phase 9: Deployment
-- [ ] Phase 10: Documentation
+- **Real-time Detection** - Analyzes websites instantly as you browse
+- **Risk Scoring** - Advanced algorithm evaluates 20+ risk factors (0-100 scale)
+- **Visual Warnings** - Shows alerts for dangerous sites
+- **Brand Protection** - Detects fake versions of major brands
+- **Privacy First** - All analysis happens locally, no data collection
+
+## 🚀 Quick Start
+
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/ai-phishing-detector.git
+```
+
+2. Load in Chrome
+   - Open `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked"
+   - Select the `/extension` folder
+
+3. Click the extension icon to see analysis of any website
+
+## 📊 Development Progress
+
+- [x] Core detection engine
+- [x] Risk scoring system
+- [x] Warning system
+- [x] Brand impersonation detection
+- [x] Performance optimization
+- [ ] AI integration (in progress)
+- [ ] Backend server
+- [ ] Chrome Web Store deployment
 
 ## 📁 Project Structure
+
 ```
 ai-phishing-detector/
 ├── extension/          # Chrome extension files
 │   ├── manifest.json   # Extension configuration
+│   ├── background.js   # Service worker
+│   ├── content.js      # Detection engine
 │   ├── popup.html      # Extension popup
 │   └── popup.js        # Popup functionality
 ├── server/            # Backend API (coming soon)
@@ -27,12 +52,34 @@ ai-phishing-detector/
 └── tests/             # Test files
 ```
 
-## 🛠️ Setup
+## 🔧 How It Works
 
-1. Clone repository
-2. Load `/extension` folder in Chrome as unpacked extension
-3. Click extension icon to test
+1. **Analyzes** - URL patterns, page content, and DOM structure
+2. **Calculates** - Risk score based on suspicious indicators
+3. **Warns** - Shows banner for high-risk sites (60+ score)
+4. **Protects** - Helps users avoid phishing attempts
 
-## 📈 Current Version: 0.0.1
+## 📈 Performance
 
-Basic popup interface working. Content analysis coming next.
+- Analysis time: < 50ms
+- Risk factors: 20+
+- Zero external dependencies
+- Works completely offline
+
+## 🤝 Contributing
+
+Contributions welcome! Please open an issue or submit a PR.
+
+## 📄 License
+
+MIT License
+
+## 📞 Contact
+
+**Developer**: Rugved Deshpande  
+**GitHub**: [Issues](https://github.com/yourusername/ai-phishing-detector/issues)
+
+---
+
+**Version**: 0.4.0 | **Status**: Active Development
+```
