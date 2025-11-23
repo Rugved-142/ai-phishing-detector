@@ -30,6 +30,92 @@ const performanceMonitor = {
   }
 };
 
+// Initialize Gemini analyzer safely
+let geminiAnalyzer = null;
+let aiInitialized = false;
+
+// Load API settings and initialize if available
+async function initializeAI() {
+  if (aiInitialized) return true;
+  
+  try {
+    // Get settings from storage via background script
+    const response = await chrome.runtime.sendMessage({ type: 'GET_API_KEY' });
+    
+    if (response && response.apiKey && response.enableAI) {
+      // Load Gemini API script if not already loaded
+      if (typeof GeminiAnalyzer === 'undefined') {
+        const script = document.createElement('script');
+        script.src = chrome.runtime.getURL('gemini-api.js');
+        document.head.appendChild(script);
+        
+        // Wait for script to load
+        await new Promise((resolve) => {
+          script.onload = () => setTimeout(resolve, 100);
+        });
+      }
+      
+      // Create analyzer instance
+      if (typeof GeminiAnalyzer !== 'undefined') {
+        geminiAnalyzer = new GeminiAnalyzer();
+        aiInitialized = true;
+        console.log('🤖 AI analyzer initialized');
+        return true;
+      }
+    } else {
+      console.log('🤖 AI not configured - using traditional detection only');
+    }
+  } catch (error) {
+    console.log('🤖 AI initialization skipped:', error.message);
+  }
+  
+  return false;
+}
+
+// AI analysis function
+async function performAIAnalysis(features) {
+  if (!geminiAnalyzer) return null;
+  
+  performanceMonitor.start('aiAnalysis');
+  
+  try {
+    const pageData = {
+      url: window.location.href,
+      title: document.title,
+      content: document.body.innerText.substring(0, 2000),
+      features: features
+    };
+    
+    const aiResult = await geminiAnalyzer.analyzePage(pageData);
+    console.log('🤖 AI Analysis Result:', aiResult);
+    
+    performanceMonitor.end('aiAnalysis');
+    return aiResult;
+  } catch (error) {
+    console.error('AI analysis error:', error);
+    performanceMonitor.end('aiAnalysis');
+    return null;
+  }
+}
+
+// Calculate hybrid score
+function calculateHybridRisk(traditionalScore, aiAnalysis) {
+  if (!aiAnalysis || !aiAnalysis.success) {
+    return traditionalScore;
+  }
+  
+  const aiScore = aiAnalysis.isPhishing ? aiAnalysis.confidence : (100 - aiAnalysis.confidence);
+  const hybridScore = Math.round((traditionalScore * 0.6) + (aiScore * 0.4));
+  
+  console.log('🔄 Hybrid Score:', {
+    traditional: traditionalScore,
+    ai: aiScore,
+    hybrid: hybridScore
+  });
+  
+  return Math.min(hybridScore, 100);
+}
+
 // Extract basic URL and domain features
 function extractBasicFeatures() {
   performanceMonitor.start('basicFeatures');
@@ -510,27 +596,37 @@ function injectWarningBanner(riskScore, riskFactors) {
 
 // Report performance metrics
 function reportPerformance() {
-  chrome.storage.local.get(['performanceHistory'], (result) => {
-    const history = result.performanceHistory || [];
-    
-    if (history.length > 0) {
-      const avgTime = history.reduce((sum, h) => sum + h.totalTime, 0) / history.length;
-      const maxTime = Math.max(...history.map(h => h.totalTime));
-      const minTime = Math.min(...history.map(h => h.totalTime));
-      
-      console.log('📈 Performance Report:', {
-        averageTime: `${avgTime.toFixed(2)}ms`,
-        maxTime: `${maxTime.toFixed(2)}ms`,
-        minTime: `${minTime.toFixed(2)}ms`,
-        sampleSize: history.length
+  try {
+    if (chrome && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['performanceHistory'], (result) => {
+        if (chrome.runtime.lastError) {
+          console.warn('Storage error:', chrome.runtime.lastError);
+          return;
+        }
+        const history = result.performanceHistory || [];
+        
+        if (history.length > 0) {
+          const avgTime = history.reduce((sum, h) => sum + h.totalTime, 0) / history.length;
+          const maxTime = Math.max(...history.map(h => h.totalTime));
+          const minTime = Math.min(...history.map(h => h.totalTime));
+          
+          console.log('📈 Performance Report:', {
+            averageTime: `${avgTime.toFixed(2)}ms`,
+            maxTime: `${maxTime.toFixed(2)}ms`,
+            minTime: `${minTime.toFixed(2)}ms`,
+            sampleSize: history.length
+          });
+        }
       });
     }
-  });
+  } catch (error) {
+    console.warn('Chrome storage not available in reportPerformance:', error);
+  }
 }
 
-// Main analysis function
+// Main analysis function with AI integration
 let analysisCount = 0;
-function analyzePage() {
+async function analyzePage() {
   performanceMonitor.reset();
   performanceMonitor.start('totalAnalysis');
   
@@ -539,6 +635,9 @@ function analyzePage() {
     console.log('Warning previously dismissed for this session');
     return;
   }
+  
+  // Initialize AI if available
+  await initializeAI();
   
   const basicFeatures = extractBasicFeatures();
   const domFeatures = extractDOMFeatures();
@@ -559,12 +658,12 @@ function analyzePage() {
     hasTyposquat: brandCheck.hasTyposquat
   };
   
-  let riskScore = calculateWeightedRisk(features);
+  let traditionalScore = calculateWeightedRisk(features);
   
   // Boost score for brand impersonation
   if (brandCheck.isSuspicious) {
     const boost = Math.floor(brandCheck.confidenceLevel * 0.3);
-    riskScore = Math.min(riskScore + boost, 100);
+    traditionalScore = Math.min(traditionalScore + boost, 100);
     
     if (!features.riskFactors) features.riskFactors = [];
     if (brandCheck.brandName) {
@@ -574,12 +673,37 @@ function analyzePage() {
     }
   }
   
+  // Perform AI analysis if available
+  let aiAnalysis = null;
+  let finalRiskScore = traditionalScore;
+  
+  if (geminiAnalyzer) {
+    try {
+      aiAnalysis = await performAIAnalysis(features);
+      
+      if (aiAnalysis && aiAnalysis.success) {
+        // Calculate hybrid score
+        finalRiskScore = calculateHybridRisk(traditionalScore, aiAnalysis);
+        
+        // Add AI insights to risk factors
+        if (aiAnalysis.threats && aiAnalysis.threats.length > 0) {
+          features.riskFactors = features.riskFactors || [];
+          aiAnalysis.threats.forEach(threat => {
+            features.riskFactors.push(`AI: ${threat}`);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+    }
+  }
+  
   performanceMonitor.end('riskCalculation');
   
   // Show warning for high-risk sites
-  if (riskScore >= 60) {
+  if (finalRiskScore >= 60) {
     performanceMonitor.start('warningBanner');
-    injectWarningBanner(riskScore, features.riskFactors);
+    injectWarningBanner(finalRiskScore, features.riskFactors);
     performanceMonitor.end('warningBanner');
   }
   
@@ -587,60 +711,85 @@ function analyzePage() {
   const metrics = performanceMonitor.getMetrics();
   
   // Log performance summary
-  console.log('📊 Performance Summary:', {
+  console.log('📊 Analysis Complete:', {
     totalTime: `${totalTime.toFixed(2)}ms`,
-    breakdown: metrics
+    traditionalScore,
+    aiEnabled: aiAnalysis !== null,
+    finalScore: finalRiskScore
   });
   
   // Store performance data
-  chrome.storage.local.get(['performanceHistory'], (result) => {
-    const history = result.performanceHistory || [];
-    history.push({
-      url: features.url,
-      totalTime: totalTime,
-      metrics: metrics,
-      timestamp: Date.now()
-    });
-    
-    // Keep last 50 measurements
-    if (history.length > 50) {
-      history.shift();
+  try {
+    if (chrome && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['performanceHistory'], (result) => {
+        if (chrome.runtime.lastError) {
+          console.warn('Storage error:', chrome.runtime.lastError);
+          return;
+        }
+        
+        const history = result.performanceHistory || [];
+        history.push({
+          url: features.url,
+          totalTime: totalTime,
+          metrics: metrics,
+          aiEnabled: aiAnalysis !== null,
+          timestamp: Date.now()
+        });
+        
+        // Keep last 50 measurements
+        if (history.length > 50) {
+          history.shift();
+        }
+        
+        chrome.storage.local.set({ 
+          performanceHistory: history
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.warn('Failed to save performance data:', chrome.runtime.lastError);
+          }
+        });
+      });
     }
-    
-    chrome.storage.local.set({ 
-      performanceHistory: history,
-      lastPerformanceMetrics: {
-        totalTime: totalTime,
-        metrics: metrics,
-        timestamp: Date.now()
-      }
-    });
-  });
+  } catch (error) {
+    console.warn('Chrome storage not available:', error);
+  }
   
   // Send analysis results
   chrome.runtime.sendMessage({
     type: 'ANALYSIS_COMPLETE',
     url: features.url,
     features: features,
-    riskScore: riskScore,
+    riskScore: finalRiskScore,
+    traditionalScore: traditionalScore,
     riskFactors: features.riskFactors,
     brandCheck: brandCheck,
-    performanceMetrics: {
-      totalTime: totalTime,
-      breakdown: metrics
-    }
+    aiAnalysis: aiAnalysis,
+    performanceMetrics: metrics
   });
   
-  chrome.storage.local.set({
-    [features.hostname]: {
-      riskScore: riskScore,
-      features: features,
-      riskFactors: features.riskFactors,
-      brandCheck: brandCheck,
-      performanceMetrics: metrics,
-      timestamp: Date.now()
+  // Store results
+  try {
+    if (chrome && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({
+        [features.hostname]: {
+          riskScore: finalRiskScore,
+          traditionalScore: traditionalScore,
+          features: features,
+          riskFactors: features.riskFactors,
+          brandCheck: brandCheck,
+          aiAnalysis: aiAnalysis,
+          performanceMetrics: metrics,
+          timestamp: Date.now()
+        }
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('Failed to store results:', chrome.runtime.lastError);
+        }
+      });
     }
-  });
+  } catch (error) {
+    console.warn('Chrome storage not available for results:', error);
+  }
   
   // Report performance every 10 analyses
   analysisCount++;
@@ -648,14 +797,15 @@ function analyzePage() {
     reportPerformance();
   }
   
-  return { features, riskScore, brandCheck, performance: metrics };
+  return { features, riskScore: finalRiskScore, brandCheck, aiAnalysis, performance: metrics };
 }
 
 // Run analysis when page loads
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', analyzePage);
 } else {
-  analyzePage();
+  // Small delay to ensure page is ready
+  setTimeout(analyzePage, 100);
 }
 
 // Listen for URL changes (for single-page apps)

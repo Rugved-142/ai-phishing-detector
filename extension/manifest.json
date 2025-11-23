@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
   "name": "AI Phishing Detector",
-  "version": "0.4.0",
-  "description": "Advanced phishing detection with real-time analysis and warnings",
+  "version": "0.5.0",
+  "description": "Protect yourself from phishing with AI-powered detection",
   
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Click to see site analysis"
+    "default_title": "AI Phishing Detector"
   },
   
   "background": {
@@ -21,12 +21,22 @@
     }
   ],
   
+  "options_page": "options.html",
+  
   "permissions": [
     "storage",
     "tabs"
   ],
   
   "host_permissions": [
-    "<all_urls>"
+    "<all_urls>",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["gemini-api.js"],
+      "matches": ["<all_urls>"]
+    }
   ]
 }
