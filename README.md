@@ -32,8 +32,8 @@ git clone https://github.com/yourusername/ai-phishing-detector.git
 - [x] Warning system
 - [x] Brand impersonation detection
 - [x] Performance optimization
-- [ ] AI integration (in progress)
-- [ ] Backend server
+- [x] AI integration 
+- [ ] Backend server (in progress)
 - [ ] Chrome Web Store deployment
 
 ## 📁 Project Structure
