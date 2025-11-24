@@ -22,7 +22,10 @@ router.post('/submit', async (req, res) => {
 // Get pending reports (admin endpoint)
 router.get('/pending', async (req, res) => {
   try {
-    // In production, add authentication here
+    // TODO: Add authentication middleware before production deployment
+    // Example: const { authenticateToken } = require('../middleware/auth');
+    // This endpoint should be protected as it exposes sensitive report data
+    
     const reports = await Report.find({ status: 'pending' })
       .sort({ createdAt: -1 })
       .limit(50);
