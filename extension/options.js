@@ -47,9 +47,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
         {
           method: 'POST',
-          headers: {
+          headers: { 
             'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
+            'X-Goog-Api-Key': apiKey
           },
           body: JSON.stringify({
             contents: [{
@@ -90,7 +90,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateAIStatus(false);
       }
     } catch (error) {
-      console.error('API Test Error:', error);
       showStatus('❌ Connection failed: ' + error.message, 'error');
       updateAIStatus(false);
     } finally {
