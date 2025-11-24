@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Phishing Detector",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "description": "Protect yourself from phishing with AI-powered detection",
   
   "action": {
@@ -16,7 +16,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["gemini-api.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
@@ -36,7 +36,7 @@
   
   "web_accessible_resources": [
     {
-      "resources": ["gemini-api.js"],
+      "resources": ["gemini-api.js", "dashboard.html", "dashboard.js"],
       "matches": ["<all_urls>"]
     }
   ]

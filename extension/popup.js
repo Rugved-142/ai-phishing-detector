@@ -1,55 +1,60 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  const statusEl = document.getElementById('status');
-  const checkBtn = document.getElementById('check');
+  // Elements
+  const urlDisplay = document.getElementById('urlDisplay');
+  const loadingState = document.getElementById('loadingState');
+  const analysisResults = document.getElementById('analysisResults');
+  const aiBadge = document.getElementById('aiBadge');
+  const riskScoreText = document.getElementById('riskScoreText');
+  const riskScoreCircle = document.getElementById('riskScoreCircle');
+  const riskLabel = document.getElementById('riskLabel');
+  const riskDescription = document.getElementById('riskDescription');
+  const aiInsight = document.getElementById('aiInsight');
+  const aiInsightText = document.getElementById('aiInsightText');
+  const threatDetails = document.getElementById('threatDetails');
+  const riskFactors = document.getElementById('riskFactors');
+  const rescanBtn = document.getElementById('rescanBtn');
+  const reportBtn = document.getElementById('reportBtn');
+  const dashboardBtn = document.getElementById('dashboardBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const helpBtn = document.getElementById('helpBtn');
   
-  // Check if AI is configured and enabled
+  // Check AI status
   const aiSettings = await chrome.storage.local.get(['aiSettings']);
-  const hasApiKey = aiSettings.aiSettings && aiSettings.aiSettings.apiKey;
-  const isAiEnabled = aiSettings.aiSettings && aiSettings.aiSettings.enableAI && hasApiKey;
+  const hasApiKey = aiSettings.aiSettings && aiSettings.aiSettings.apiKey && aiSettings.aiSettings.apiKey.trim() !== '';
+  const isAiEnabled = hasApiKey && aiSettings.aiSettings.enableAI;
+  
+  if (isAiEnabled) {
+    aiBadge.style.display = 'inline-flex';
+  } else {
+    aiBadge.style.display = 'none';
+  }
   
   // Get current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   
-  // Display URL
-  const urlDisplay = document.createElement('div');
-  urlDisplay.style.fontSize = '12px';
-  urlDisplay.style.marginTop = '10px';
-  urlDisplay.style.wordBreak = 'break-all';
-  urlDisplay.style.color = '#666';
-  urlDisplay.textContent = tab.url;
-  statusEl.parentElement.insertBefore(urlDisplay, statusEl.nextSibling);
+  // Check if URL can be analyzed
+  const canAnalyze = tab.url && 
+    !tab.url.startsWith('chrome://') && 
+    !tab.url.startsWith('chrome-extension://') && 
+    !tab.url.startsWith('moz-extension://') && 
+    !tab.url.startsWith('edge://') && 
+    !tab.url.startsWith('about:') && 
+    !tab.url.startsWith('file://');
   
-  // Show AI status indicator
-  if (isAiEnabled) {
-    const aiIndicator = document.createElement('div');
-    aiIndicator.style.cssText = `
-      display: inline-block;
-      background: #e8f0fe;
-      color: #1967d2;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      margin-top: 8px;
-    `;
-    aiIndicator.innerHTML = '🤖 AI Enabled';
-    urlDisplay.appendChild(aiIndicator);
-  } else if (hasApiKey) {
-    const aiIndicator = document.createElement('div');
-    aiIndicator.style.cssText = `
-      display: inline-block;
-      background: #fce8e6;
-      color: #d93025;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      margin-top: 8px;
-    `;
-    aiIndicator.innerHTML = '🤖 AI Inactive';
-    urlDisplay.appendChild(aiIndicator);
+  if (canAnalyze) {
+    try {
+      urlDisplay.textContent = new URL(tab.url).hostname;
+    } catch (e) {
+      urlDisplay.textContent = 'Invalid URL';
+    }
+    // Load analysis
+    await loadAnalysis();
+  } else {
+    urlDisplay.textContent = 'Protected page';
+    displayCannotAnalyze();
   }
   
-  // Get stored analysis for this site
-  if (tab.url) {
+  async function loadAnalysis() {
     try {
       const hostname = new URL(tab.url).hostname;
       const result = await chrome.storage.local.get([hostname]);
@@ -57,160 +62,170 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (result[hostname]) {
         displayAnalysis(result[hostname]);
       } else {
-        statusEl.textContent = 'Not analyzed yet';
+        // No analysis available for this site yet
+        displayNoAnalysis();
       }
     } catch (error) {
-      statusEl.textContent = 'Cannot analyze this page';
+      displayNoAnalysis();
     }
   }
   
-  // Check button functionality
-  checkBtn.addEventListener('click', async () => {
-    statusEl.textContent = hasApiKey ? 'Analyzing with AI...' : 'Analyzing...';
-    checkBtn.disabled = true;
+  function displayAnalysis(data) {
+    loadingState.style.display = 'none';
+    analysisResults.style.display = 'block';
     
-    // Reload tab to trigger fresh analysis
+    const { riskScore, aiAnalysis, riskFactors: factors, brandCheck } = data;
+    
+    // Update risk score display
+    riskScoreText.textContent = `${riskScore}%`;
+    updateRiskMeter(riskScore);
+    
+    // Update risk label and description
+    if (riskScore < 30) {
+      riskLabel.textContent = 'Safe';
+      riskLabel.className = 'risk-label safe';
+      riskDescription.textContent = 'This website appears to be legitimate';
+    } else if (riskScore < 60) {
+      riskLabel.textContent = 'Caution';
+      riskLabel.className = 'risk-label caution';
+      riskDescription.textContent = 'Some suspicious elements detected';
+    } else {
+      riskLabel.textContent = 'Dangerous';
+      riskLabel.className = 'risk-label danger';
+      riskDescription.textContent = 'High risk of phishing or scam';
+    }
+    
+    // AI Insight
+    if (aiAnalysis && aiAnalysis.success) {
+      aiInsight.style.display = 'block';
+      aiInsightText.innerHTML = `
+        <strong>Confidence:</strong> ${aiAnalysis.confidence}%<br>
+        <strong>Risk Level:</strong> ${aiAnalysis.riskLevel}<br>
+        ${aiAnalysis.explanation ? `<em>${aiAnalysis.explanation}</em>` : ''}
+      `;
+    } else {
+      aiInsight.style.display = 'none';
+    }
+    
+    // Brand check
+    if (brandCheck && brandCheck.isSuspicious) {
+      threatDetails.innerHTML = `
+        <div class="detail-title">
+          <span class=\"detail-icon\" style=\"background: #e74c3c; color: white; border-radius: 50%; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; margin-right: 6px;\">!</span>
+          Threat Detected
+        </div>
+        <div class="detail-item">
+          <span class=\"detail-icon\" style=\"background: #f39c12; color: white; border-radius: 50%; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold;\">⚠</span>
+          <span>${brandCheck.brandName ? 
+            `Possible ${brandCheck.brandName} impersonation` : 
+            'Suspicious domain detected'}</span>
+        </div>
+      `;
+    }
+    
+    // Risk factors
+    if (factors && factors.length > 0) {
+      let factorsHtml = '<div class="detail-title">Risk Factors</div>';
+      factors.slice(0, 5).forEach(factor => {
+        const isAI = factor.startsWith('AI:');
+        factorsHtml += `
+          <div class="detail-item">
+            <span class="detail-icon" style="background: ${isAI ? '#667eea' : '#f39c12'}; color: white; border-radius: 50%; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold;">${isAI ? 'AI' : '!'}</span>
+            <span>${factor}</span>
+          </div>
+        `;
+      });
+      riskFactors.innerHTML = factorsHtml;
+    }
+  }
+  
+  function updateRiskMeter(score) {
+    const circle = document.getElementById('riskScoreCircle');
+    const circumference = 314; // 2 * π * r (r=50)
+    const offset = circumference - (score / 100) * circumference;
+    
+    circle.style.strokeDashoffset = offset;
+    
+    // Color based on risk
+    if (score < 30) {
+      circle.style.stroke = '#27ae60';
+    } else if (score < 60) {
+      circle.style.stroke = '#f39c12';
+    } else {
+      circle.style.stroke = '#e74c3c';
+    }
+  }
+  
+  function displayNoAnalysis() {
+    loadingState.style.display = 'none';
+    analysisResults.style.display = 'block';
+    
+    // Reset risk score display
+    riskScoreText.textContent = '0%';
+    riskScoreCircle.style.stroke = '#e9ecef';
+    riskScoreCircle.style.strokeDashoffset = '314';
+    
+    riskLabel.textContent = 'Not analyzed yet';
+    riskLabel.className = 'risk-label';
+    riskDescription.textContent = 'Click "Rescan Website" to analyze this page';
+    
+    // Hide AI insight and other details
+    aiInsight.style.display = 'none';
+    threatDetails.innerHTML = '';
+    riskFactors.innerHTML = '<div class="detail-title">Click rescan to analyze this website</div>';
+  }
+  
+  function displayCannotAnalyze() {
+    loadingState.style.display = 'none';
+    analysisResults.style.display = 'block';
+    
+    // Reset risk score display
+    riskScoreText.textContent = '-';
+    riskScoreCircle.style.stroke = '#e9ecef';
+    riskScoreCircle.style.strokeDashoffset = '314';
+    
+    riskLabel.textContent = 'Cannot analyze';
+    riskLabel.className = 'risk-label';
+    riskDescription.textContent = 'This page cannot be analyzed for security reasons';
+    
+    // Hide AI insight and other details
+    aiInsight.style.display = 'none';
+    threatDetails.innerHTML = '';
+    riskFactors.innerHTML = '<div class="detail-title">Protected browser pages cannot be analyzed</div>';
+    
+    // Disable rescan button for protected pages
+    rescanBtn.disabled = true;
+    rescanBtn.style.opacity = '0.5';
+    rescanBtn.style.cursor = 'not-allowed';
+  }
+  
+  // Button handlers
+  rescanBtn.addEventListener('click', async () => {
+    loadingState.style.display = 'block';
+    analysisResults.style.display = 'none';
+    
+    // Reload the tab to trigger fresh analysis
     await chrome.tabs.reload(tab.id);
     
-    // Wait for analysis
+    // Wait a bit for the page to load and analyze
     setTimeout(async () => {
-      const hostname = new URL(tab.url).hostname;
-      const result = await chrome.storage.local.get([hostname]);
-      
-      if (result[hostname]) {
-        displayAnalysis(result[hostname]);
-      }
-      checkBtn.disabled = false;
-    }, hasApiKey ? 3000 : 2000);
+      await loadAnalysis();
+    }, 3000);
   });
   
-  // Add settings button
-  const settingsBtn = document.createElement('button');
-  settingsBtn.textContent = '⚙️ Settings';
-  settingsBtn.style.cssText = `
-    margin-top: 15px;
-    padding: 8px 15px;
-    background: #f1f3f4;
-    color: #5f6368;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 13px;
-    width: 100%;
-  `;
+  reportBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'report.html' });
+  });
+  
+  dashboardBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'dashboard.html' });
+  });
+  
   settingsBtn.addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
   });
-  document.body.appendChild(settingsBtn);
   
-  function displayAnalysis(data) {
-    const { riskScore, traditionalScore, features, riskFactors, brandCheck, aiAnalysis, performanceMetrics } = data;
-    
-    // Update status with risk score
-    statusEl.innerHTML = `Risk Score: <strong>${riskScore}%</strong>`;
-    
-    // Show if AI was used
-    if (aiAnalysis && aiAnalysis.success) {
-      statusEl.innerHTML += ' <span style="color: #4285f4; font-size: 10px;">🤖</span>';
-    }
-    
-    // Color code based on risk
-    if (riskScore < 30) {
-      statusEl.style.color = 'green';
-      statusEl.innerHTML += ' ✅ (Safe)';
-    } else if (riskScore < 60) {
-      statusEl.style.color = 'orange';
-      statusEl.innerHTML += ' ⚠️ (Caution)';
-    } else {
-      statusEl.style.color = 'red';
-      statusEl.innerHTML += ' 🚨 (Dangerous)';
-    }
-    
-    // Clear previous analysis details
-    const existingDetails = document.querySelectorAll('.analysis-detail');
-    existingDetails.forEach(el => el.remove());
-    
-    // Show AI insights if available
-    if (aiAnalysis && aiAnalysis.success) {
-      const aiInsights = document.createElement('div');
-      aiInsights.className = 'analysis-detail';
-      aiInsights.style.cssText = `
-        margin-top: 15px;
-        padding: 10px;
-        background: #e8f0fe;
-        border-left: 3px solid #4285f4;
-        color: #1967d2;
-        font-size: 12px;
-        border-radius: 4px;
-      `;
-      aiInsights.innerHTML = `
-        <strong>🤖 AI Analysis</strong><br>
-        Confidence: ${aiAnalysis.confidence}%<br>
-        Risk Level: ${aiAnalysis.riskLevel}<br>
-        ${aiAnalysis.explanation ? `<em style="color: #333; margin-top: 5px; display: block;">${aiAnalysis.explanation}</em>` : ''}
-      `;
-      checkBtn.parentElement.insertBefore(aiInsights, settingsBtn);
-    }
-    
-    // Show brand impersonation warning if detected
-    if (brandCheck && brandCheck.isSuspicious) {
-      const brandWarning = document.createElement('div');
-      brandWarning.className = 'analysis-detail';
-      brandWarning.style.cssText = `
-        margin-top: 15px;
-        padding: 10px;
-        background: #ffebee;
-        border-left: 3px solid #f44336;
-        color: #c62828;
-        font-size: 13px;
-        border-radius: 4px;
-      `;
-      brandWarning.innerHTML = `
-        <strong>⚠️ Brand Alert</strong><br>
-        ${brandCheck.brandName ? `Possible ${brandCheck.brandName} impersonation` : 'Suspicious domain detected'}
-      `;
-      checkBtn.parentElement.insertBefore(brandWarning, settingsBtn);
-    }
-    
-    // Show top risk factors
-    if (riskFactors && riskFactors.length > 0) {
-      const factors = document.createElement('div');
-      factors.className = 'analysis-detail';
-      factors.style.cssText = `
-        margin-top: 15px;
-        font-size: 12px;
-        color: #555;
-      `;
-      factors.innerHTML = '<strong>Risk Factors:</strong><br>';
-      
-      riskFactors.slice(0, 3).forEach(factor => {
-        const isAI = factor.startsWith('AI:');
-        factors.innerHTML += `${isAI ? '🤖' : '•'} ${factor}<br>`;
-      });
-      
-      if (riskFactors.length > 3) {
-        factors.innerHTML += `<em style="color: #999;">+${riskFactors.length - 3} more...</em>`;
-      }
-      
-      checkBtn.parentElement.insertBefore(factors, settingsBtn);
-    }
-    
-    // Show performance metrics
-    if (performanceMetrics && performanceMetrics.totalAnalysis) {
-      const perfDiv = document.createElement('div');
-      perfDiv.className = 'analysis-detail';
-      perfDiv.style.cssText = `
-        margin-top: 15px;
-        padding-top: 10px;
-        border-top: 1px solid #e0e0e0;
-        font-size: 11px;
-        color: #999;
-        text-align: center;
-      `;
-      const aiTime = performanceMetrics.aiAnalysis ? 
-        ` (AI: ${performanceMetrics.aiAnalysis.duration.toFixed(0)}ms)` : '';
-      perfDiv.innerHTML = `Analysis: ${performanceMetrics.totalAnalysis.duration.toFixed(0)}ms${aiTime}`;
-      checkBtn.parentElement.insertBefore(perfDiv, settingsBtn);
-    }
-  }
+  helpBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'https://github.com/Rugved-142/ai-phishing-detector' });
+  });
 });

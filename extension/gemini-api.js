@@ -20,13 +20,7 @@ class GeminiAnalyzer {
         this.apiKey = settings.aiSettings.apiKey;
         this.enabled = settings.aiSettings.enableAI && !!settings.aiSettings.apiKey;
         this.initialized = true;
-        
-        console.log('🤖 AI Settings loaded:', {
-          enabled: this.enabled,
-          hasKey: !!this.apiKey
-        });
       } else {
-        console.log('🤖 No AI settings found');
         this.enabled = false;
       }
     } catch (error) {
@@ -52,14 +46,12 @@ class GeminiAnalyzer {
     }
     
     if (!this.isAvailable()) {
-      console.log('🤖 AI analysis not available (no API key or disabled)');
       return null;
     }
 
     // Check cache first
     const cacheKey = pageData.url;
     if (this.cache.has(cacheKey)) {
-      console.log('📦 Using cached AI analysis');
       return this.cache.get(cacheKey);
     }
 
@@ -76,8 +68,6 @@ class GeminiAnalyzer {
       
       return analysis;
     } catch (error) {
-      console.error('❌ AI Analysis failed:', error.message);
-      
       // If API key is invalid, disable AI
       if (error.message.includes('401') || error.message.includes('403')) {
         this.enabled = false;
@@ -144,7 +134,7 @@ Analyze for phishing indicators and respond with ONLY valid JSON (no markdown):
       throw new Error('No API key available');
     }
 
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`;
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent`;
     
     const requestBody = {
       contents: [{
@@ -183,20 +173,19 @@ Analyze for phishing indicators and respond with ONLY valid JSON (no markdown):
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Goog-Api-Key': this.apiKey,
         },
         body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        throw new Error(`API request failed: ${response.status}`);
+        throw new Error(`API request failed: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('API Call Error:', error);
       throw error;
     }
   }
@@ -210,12 +199,22 @@ Analyze for phishing indicators and respond with ONLY valid JSON (no markdown):
         throw new Error('Invalid API response structure');
       }
       
-      const text = response.candidates[0].content.parts[0].text;
+      const candidate = response.candidates[0];
+      if (!candidate.content || !candidate.content.parts || !candidate.content.parts[0]) {
+        throw new Error('Invalid response content structure');
+      }
+      
+      const text = candidate.content.parts[0].text;
+      if (!text) {
+        throw new Error('Empty response text');
+      }
       
       // Clean the response (remove any markdown formatting)
       const cleanedText = text
         .replace(/```json\n?/gi, '')
         .replace(/```\n?/gi, '')
+        .replace(/^[\s\n]*{/, '{')
+        .replace(/}[\s\n]*$/, '}')
         .trim();
       
       // Parse JSON
@@ -224,20 +223,22 @@ Analyze for phishing indicators and respond with ONLY valid JSON (no markdown):
       // Validate required fields
       if (typeof analysis.isPhishing !== 'boolean' || 
           typeof analysis.confidence !== 'number') {
-        throw new Error('Invalid response format');
+        throw new Error('Invalid response format - missing required fields');
       }
+      
+      // Ensure confidence is within valid range
+      const confidence = Math.min(100, Math.max(0, analysis.confidence));
       
       return {
         success: true,
-        isPhishing: analysis.isPhishing,
-        confidence: Math.min(100, Math.max(0, analysis.confidence)),
+        isPhishing: Boolean(analysis.isPhishing),
+        confidence: confidence,
         riskLevel: analysis.riskLevel || 'unknown',
-        threats: analysis.threats || [],
+        threats: Array.isArray(analysis.threats) ? analysis.threats : [],
         brandImpersonation: analysis.brandImpersonation || null,
-        explanation: analysis.explanation || 'No explanation provided'
+        explanation: analysis.explanation || 'AI analysis completed'
       };
     } catch (error) {
-      console.error('Failed to parse AI response:', error);
       return this.getFallbackAnalysis();
     }
   }
@@ -265,7 +266,10 @@ Analyze for phishing indicators and respond with ONLY valid JSON (no markdown):
   }
 }
 
-// Create instance and make it available
-if (typeof window !== 'undefined') {
-  window.GeminiAnalyzer = GeminiAnalyzer;
+// Create instance and make it available globally
+window.GeminiAnalyzer = GeminiAnalyzer;
+
+// Also make it available as a global variable
+if (typeof globalThis !== 'undefined') {
+  globalThis.GeminiAnalyzer = GeminiAnalyzer;
 }

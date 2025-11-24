@@ -1,5 +1,4 @@
 // AI Phishing Detector - Content Script
-console.log('🛡️ AI Phishing Detector v3 is analyzing:', window.location.href);
 
 // Performance monitoring system
 const performanceMonitor = {
@@ -16,8 +15,6 @@ const performanceMonitor = {
     
     const duration = performance.now() - this.metrics[operation].startTime;
     this.metrics[operation].duration = duration;
-    
-    console.log(`⏱️ ${operation}: ${duration.toFixed(2)}ms`);
     return duration;
   },
   
@@ -43,30 +40,17 @@ async function initializeAI() {
     const response = await chrome.runtime.sendMessage({ type: 'GET_API_KEY' });
     
     if (response && response.apiKey && response.enableAI) {
-      // Load Gemini API script if not already loaded
-      if (typeof GeminiAnalyzer === 'undefined') {
-        const script = document.createElement('script');
-        script.src = chrome.runtime.getURL('gemini-api.js');
-        document.head.appendChild(script);
-        
-        // Wait for script to load
-        await new Promise((resolve) => {
-          script.onload = () => setTimeout(resolve, 100);
-        });
-      }
+      // Check if GeminiAnalyzer class is available (loaded via manifest)
+      const AnalyzerClass = window.GeminiAnalyzer || GeminiAnalyzer;
       
-      // Create analyzer instance
-      if (typeof GeminiAnalyzer !== 'undefined') {
-        geminiAnalyzer = new GeminiAnalyzer();
+      if (AnalyzerClass) {
+        geminiAnalyzer = new AnalyzerClass();
         aiInitialized = true;
-        console.log('🤖 AI analyzer initialized');
         return true;
       }
-    } else {
-      console.log('🤖 AI not configured - using traditional detection only');
     }
   } catch (error) {
-    console.log('🤖 AI initialization skipped:', error.message);
+    // AI initialization failed - continue with traditional detection
   }
   
   return false;
@@ -87,12 +71,10 @@ async function performAIAnalysis(features) {
     };
     
     const aiResult = await geminiAnalyzer.analyzePage(pageData);
-    console.log('🤖 AI Analysis Result:', aiResult);
     
     performanceMonitor.end('aiAnalysis');
     return aiResult;
   } catch (error) {
-    console.error('AI analysis error:', error);
     performanceMonitor.end('aiAnalysis');
     return null;
   }
@@ -106,13 +88,6 @@ function calculateHybridRisk(traditionalScore, aiAnalysis) {
   
   const aiScore = aiAnalysis.isPhishing ? aiAnalysis.confidence : (100 - aiAnalysis.confidence);
   const hybridScore = Math.round((traditionalScore * 0.6) + (aiScore * 0.4));
-  
-  console.log('🔄 Hybrid Score:', {
-    traditional: traditionalScore,
-    ai: aiScore,
-    hybrid: hybridScore
-  });
-  
   return Math.min(hybridScore, 100);
 }
 
@@ -605,18 +580,7 @@ function reportPerformance() {
         }
         const history = result.performanceHistory || [];
         
-        if (history.length > 0) {
-          const avgTime = history.reduce((sum, h) => sum + h.totalTime, 0) / history.length;
-          const maxTime = Math.max(...history.map(h => h.totalTime));
-          const minTime = Math.min(...history.map(h => h.totalTime));
-          
-          console.log('📈 Performance Report:', {
-            averageTime: `${avgTime.toFixed(2)}ms`,
-            maxTime: `${maxTime.toFixed(2)}ms`,
-            minTime: `${minTime.toFixed(2)}ms`,
-            sampleSize: history.length
-          });
-        }
+        // Performance data available if needed
       });
     }
   } catch (error) {
@@ -649,11 +613,8 @@ async function reportToBackend(features, riskScore, aiAnalysis) {
       })
     });
     
-    if (response.ok) {
-      console.log('✅ Threat reported to backend');
-    }
+    // Threat reported successfully
   } catch (error) {
-    console.log('Backend reporting failed:', error);
     // Continue working even if backend is down
   }
 }
@@ -666,7 +627,6 @@ async function analyzePage() {
   
   // Check if warning was dismissed this session
   if (sessionStorage.getItem('phishing-warning-dismissed') === 'true') {
-    console.log('Warning previously dismissed for this session');
     return;
   }
   
@@ -728,7 +688,7 @@ async function analyzePage() {
         }
       }
     } catch (error) {
-      console.error('AI analysis failed:', error);
+      // AI analysis failed - continue with traditional detection
     }
   }
   
@@ -746,14 +706,6 @@ async function analyzePage() {
   
   const totalTime = performanceMonitor.end('totalAnalysis');
   const metrics = performanceMonitor.getMetrics();
-  
-  // Log performance summary
-  console.log('📊 Analysis Complete:', {
-    totalTime: `${totalTime.toFixed(2)}ms`,
-    traditionalScore,
-    aiEnabled: aiAnalysis !== null,
-    finalScore: finalRiskScore
-  });
   
   // Store performance data
   try {
@@ -851,7 +803,6 @@ new MutationObserver(() => {
   const url = location.href;
   if (url !== lastUrl) {
     lastUrl = url;
-    console.log('🔄 URL changed, re-analyzing...');
     analyzePage();
   }
 }).observe(document, { subtree: true, childList: true });

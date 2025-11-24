@@ -1,9 +1,7 @@
 // AI Phishing Detector - Background Script
-console.log('🛡️ AI Phishing Detector background service started');
 
 // Show onboarding on install
 chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log('Extension installed:', details.reason);
   
   if (details.reason === 'install') {
     // Check if onboarding is complete
@@ -29,11 +27,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'ANALYSIS_COMPLETE') {
-    console.log(`Analysis for ${message.url}:`, {
-      riskScore: message.riskScore,
-      aiEnabled: message.aiAnalysis !== null,
-      factors: message.riskFactors
-    });
     
     // Update badge based on risk
     updateBadge(sender.tab.id, message.riskScore, message.aiAnalysis !== null);
@@ -95,6 +88,8 @@ function updateBadge(tabId, riskScore, aiEnabled) {
 
 // Store analysis in history
 function storeInHistory(data) {
+
+  
   chrome.storage.local.get(['history'], (result) => {
     const history = result.history || [];
     history.push({
