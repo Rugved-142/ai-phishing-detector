@@ -27,11 +27,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/phishing-detector').then(() => {
-  console.log('✅ MongoDB connected');
-}).catch(err => {
-  console.error('MongoDB connection error:', err);
-});
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/phishing-detector')
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
 app.use('/api/threats', require('./routes/threats'));
@@ -48,10 +46,10 @@ app.get('/health', (req, res) => {
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Server error:', err.message);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
