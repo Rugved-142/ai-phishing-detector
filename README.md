@@ -264,19 +264,7 @@ npm test                 # Run all tests
 - `activeTab`: Read current page content for analysis
 - `storage`: Save settings and scan history locally
 - `host_permissions`: Access websites for real-time scanning
-
-## 🤝 Contributing
-
-This project is feature-complete and deployment-ready. The extension provides comprehensive phishing protection through:
-
-- ✅ Robust traditional detection algorithms
-- ✅ Advanced AI integration capabilities  
-- ✅ Complete test suite
-- ✅ User-friendly interface and dashboard
-- ✅ Production-ready code quality
-
-**Ready for Chrome Web Store deployment!**
-
+- 
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
