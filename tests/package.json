@@ -1,0 +1,17 @@
+{
+  "name": "ai-phishing-detector-tests",
+  "version": "1.0.0",
+  "description": "Test suite for AI Phishing Detector extension",
+  "type": "module",
+  "scripts": {
+    "test": "jest --config jest.config.cjs",
+    "test:watch": "jest --watch --config jest.config.cjs",
+    "test:coverage": "jest --coverage --config jest.config.cjs"
+  },
+  "dependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "chrome-types": "^0.1.276"
+  }
+}
