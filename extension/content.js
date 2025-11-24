@@ -624,6 +624,40 @@ function reportPerformance() {
   }
 }
 
+// Report threats to backend server
+async function reportToBackend(features, riskScore, aiAnalysis) {
+  if (riskScore < 60) return; // Only report high-risk sites
+  
+  try {
+    const response = await fetch('http://localhost:3000/api/threats/report', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url: features.url,
+        domain: features.hostname,
+        riskScore: riskScore,
+        features: {
+          isHTTPS: features.isHTTPS,
+          hasIP: features.hasIP,
+          hasPasswordField: features.hasPasswordField,
+          suspiciousWordCount: features.suspiciousWordCount,
+          brandImpersonation: features.suspectedBrand
+        },
+        aiAnalysis: aiAnalysis
+      })
+    });
+    
+    if (response.ok) {
+      console.log('✅ Threat reported to backend');
+    }
+  } catch (error) {
+    console.log('Backend reporting failed:', error);
+    // Continue working even if backend is down
+  }
+}
+
 // Main analysis function with AI integration
 let analysisCount = 0;
 async function analyzePage() {
@@ -705,6 +739,9 @@ async function analyzePage() {
     performanceMonitor.start('warningBanner');
     injectWarningBanner(finalRiskScore, features.riskFactors);
     performanceMonitor.end('warningBanner');
+    
+    // Report to backend
+    reportToBackend(features, finalRiskScore, aiAnalysis);
   }
   
   const totalTime = performanceMonitor.end('totalAnalysis');

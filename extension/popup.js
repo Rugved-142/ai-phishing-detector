@@ -2,9 +2,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
   const checkBtn = document.getElementById('check');
   
-  // Check if AI is configured
+  // Check if AI is configured and enabled
   const aiSettings = await chrome.storage.local.get(['aiSettings']);
   const hasApiKey = aiSettings.aiSettings && aiSettings.aiSettings.apiKey;
+  const isAiEnabled = aiSettings.aiSettings && aiSettings.aiSettings.enableAI && hasApiKey;
   
   // Get current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -19,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   statusEl.parentElement.insertBefore(urlDisplay, statusEl.nextSibling);
   
   // Show AI status indicator
-  if (hasApiKey) {
+  if (isAiEnabled) {
     const aiIndicator = document.createElement('div');
     aiIndicator.style.cssText = `
       display: inline-block;
@@ -31,6 +32,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       margin-top: 8px;
     `;
     aiIndicator.innerHTML = '🤖 AI Enabled';
+    urlDisplay.appendChild(aiIndicator);
+  } else if (hasApiKey) {
+    const aiIndicator = document.createElement('div');
+    aiIndicator.style.cssText = `
+      display: inline-block;
+      background: #fce8e6;
+      color: #d93025;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      margin-top: 8px;
+    `;
+    aiIndicator.innerHTML = '🤖 AI Inactive';
     urlDisplay.appendChild(aiIndicator);
   }
   
