@@ -33,22 +33,39 @@ git clone https://github.com/yourusername/ai-phishing-detector.git
 - [x] Brand impersonation detection
 - [x] Performance optimization
 - [x] AI integration 
-- [ ] Backend server (in progress)
+- [x] Backend server 
+- [ ] UI improvement (in progress)
 - [ ] Chrome Web Store deployment
 
 ## 📁 Project Structure
 
 ```
 ai-phishing-detector/
-├── extension/          # Chrome extension files
-│   ├── manifest.json   # Extension configuration
-│   ├── background.js   # Service worker
-│   ├── content.js      # Detection engine
-│   ├── popup.html      # Extension popup
-│   └── popup.js        # Popup functionality
-├── server/            # Backend API (coming soon)
-├── docs/              # Documentation
-└── tests/             # Test files
+├── extension/              # Chrome extension files
+│   ├── manifest.json       # Extension configuration
+│   ├── background.js       # Service worker
+│   ├── content.js          # Detection engine
+│   ├── popup.html          # Extension popup
+│   ├── popup.js            # Popup functionality
+│   ├── options.html        # Settings page
+│   ├── options.js          # Settings functionality
+│   └── gemini-api.js       # AI integration
+├── server/                 # Backend API server
+│   ├── server.js           # Express.js main server
+│   ├── package.json        # Dependencies & scripts
+│   ├── .env               # Environment variables
+│   ├── models/            # MongoDB data models
+│   │   ├── Threat.js      # Threat intelligence model
+│   │   ├── Report.js      # User reports model
+│   │   └── Analytics.js   # Analytics data model
+│   ├── routes/            # API endpoint routes
+│   │   ├── threats.js     # Threat data endpoints
+│   │   ├── reports.js     # User reporting endpoints
+│   │   └── analytics.js   # Analytics endpoints
+│   └── middleware/        # Express middleware
+│       └── auth.js        # Authentication middleware
+├── docs/                  # Documentation
+└── tests/                 # Test files
 ```
 
 ## 🔧 How It Works
