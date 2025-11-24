@@ -144,7 +144,7 @@ Analyze for phishing indicators and respond with ONLY valid JSON (no markdown):
       throw new Error('No API key available');
     }
 
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`;
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent`;
     
     const requestBody = {
       contents: [{
@@ -183,13 +183,14 @@ Analyze for phishing indicators and respond with ONLY valid JSON (no markdown):
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': this.apiKey
         },
         body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error Response:', errorText);
+        console.error('API request failed with status:', response.status);
         throw new Error(`API request failed: ${response.status}`);
       }
 
