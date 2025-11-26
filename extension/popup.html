@@ -164,6 +164,43 @@
     .caution { color: #f39c12; }
     .danger { color: #e74c3c; }
     
+    .security-status {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 12px;
+      padding: 15px;
+      margin: 15px 0;
+      border: 2px solid #ff4757;
+      animation: pulse-border 2s infinite;
+    }
+    
+    @keyframes pulse-border {
+      0% { border-color: #ff4757; }
+      50% { border-color: #ff6b7a; }
+      100% { border-color: #ff4757; }
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .status-indicator.blocked svg {
+      color: #ff4757;
+    }
+    
+    .status-text strong {
+      display: block;
+      color: #ff4757;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .status-text span {
+      color: #666;
+      font-size: 12px;
+    }
+    
     .analysis-details {
       background: #f8f9fa;
       border-radius: 10px;
@@ -345,6 +382,19 @@
         </div>
         <div class="risk-label" id="riskLabel">Analyzing...</div>
         <div class="risk-description" id="riskDescription"></div>
+      </div>
+      
+      <div id="securityStatus" class="security-status" style="display: none;">
+        <div class="status-indicator blocked">
+          <svg class="icon icon-lg" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m4.9 4.9 14.2 14.2"/>
+          </svg>
+          <div class="status-text">
+            <strong>Site Blocked</strong>
+            <span>High-risk content detected</span>
+          </div>
+        </div>
       </div>
       
         <div id="aiInsight" class="ai-insight" style="display: none;">

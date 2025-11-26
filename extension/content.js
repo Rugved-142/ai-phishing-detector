@@ -31,6 +31,11 @@ const performanceMonitor = {
 let geminiAnalyzer = null;
 let aiInitialized = false;
 
+// Blocking feature variables
+let isBlocked = false;
+let blockingOverlay = null;
+const RISK_THRESHOLD = 60;
+
 // Load API settings and initialize if available
 async function initializeAI() {
   if (aiInitialized) return true;
@@ -98,9 +103,20 @@ function extractBasicFeatures() {
   const url = window.location.href;
   const hostname = window.location.hostname;
   
+  // Create a consistent storage key that works for both web and file URLs
+  let storageKey;
+  if (url.startsWith('file://')) {
+    // For file URLs, use the full path as the key
+    storageKey = url;
+  } else {
+    // For web URLs, use hostname as before
+    storageKey = hostname;
+  }
+  
   const features = {
     url: url,
     hostname: hostname,
+    storageKey: storageKey,
     isHTTPS: url.startsWith('https://'),
     urlLength: url.length,
     hasIP: /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(hostname),
@@ -444,129 +460,211 @@ function calculateWeightedRisk(features) {
   return Math.min(score, 100);
 }
 
-// Inject warning banner for dangerous sites
-function injectWarningBanner(riskScore, riskFactors) {
-  // Don't duplicate banner
-  if (document.getElementById('phishing-warning-banner')) return;
+// Block high-risk sites with full-screen overlay
+function blockHighRiskSite(riskScore, riskFactors, aiAnalysis) {
+  // Don't duplicate blocking overlay
+  if (document.getElementById('phishing-blocking-overlay') || isBlocked) return;
   
-  // Don't show on extension pages or local files
-  if (window.location.protocol === 'chrome-extension:' || 
-      window.location.protocol === 'file:') return;
+  // Don't block extension pages, but allow testing with local files
+  if (window.location.protocol === 'chrome-extension:') return;
+      
+  // Check if user already bypassed this site in current session
+  if (sessionStorage.getItem('phishing-bypass-' + window.location.hostname) === 'true') {
+    return;
+  }
   
-  const banner = document.createElement('div');
-  banner.id = 'phishing-warning-banner';
-  banner.style.cssText = `
+  isBlocked = true;
+  
+  // Hide page content immediately
+  const originalBodyStyle = document.body.style.cssText;
+  document.body.style.cssText = 'overflow: hidden !important; height: 100vh !important;';
+  
+  // Create full-screen blocking overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'phishing-blocking-overlay';
+  overlay.style.cssText = `
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%);
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
     color: white;
-    padding: 15px;
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    animation: slideDown 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease-out;
   `;
   
   // Add animation keyframes
   const style = document.createElement('style');
   style.textContent = `
-    @keyframes slideDown {
-      from {
-        transform: translateY(-100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
     }
   `;
   document.head.appendChild(style);
   
-  // Build risk factors list
-  const factorsList = riskFactors && riskFactors.length > 0 
-    ? riskFactors.slice(0, 3).join(' • ') 
-    : 'Multiple security concerns detected';
+  // Build threat summary
+  const threatLevel = riskScore >= 80 ? 'CRITICAL' : 'HIGH';
+  const threatColor = riskScore >= 80 ? '#ff4757' : '#ff6348';
   
-  banner.innerHTML = `
-    <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 300px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 24px;">⚠️</span>
-          <div>
-            <strong style="font-size: 18px; display: block;">Security Warning</strong>
-            <span style="font-size: 14px; opacity: 0.95;">
-              Risk Score: ${riskScore}% • ${factorsList}
-            </span>
-          </div>
+  const factorsList = riskFactors && riskFactors.length > 0 
+    ? riskFactors.slice(0, 4).map(f => `<li>• ${f}</li>`).join('')
+    : '<li>• Multiple security indicators detected</li>';
+    
+  const aiInsight = aiAnalysis && aiAnalysis.success 
+    ? `<div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin: 20px 0;">
+         <strong>🤖 AI Analysis:</strong> ${aiAnalysis.explanation || 'Advanced threat patterns detected'}
+       </div>`
+    : '';
+  
+  overlay.innerHTML = `
+    <div style="max-width: 600px; text-align: center; padding: 40px; background: rgba(255,255,255,0.05); border-radius: 16px; backdrop-filter: blur(10px);">
+      <div style="font-size: 64px; margin-bottom: 20px; animation: pulse 2s infinite;">🛡️</div>
+      
+      <h1 style="font-size: 32px; margin: 0 0 10px 0; color: ${threatColor};">SITE BLOCKED</h1>
+      <div style="font-size: 18px; color: #ff9ff3; margin-bottom: 30px;">${threatLevel} THREAT DETECTED</div>
+      
+      <div style="background: rgba(255,71,87,0.2); border: 1px solid rgba(255,71,87,0.5); border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <div style="font-size: 16px; margin-bottom: 15px;">⚠️ <strong>Risk Score: ${riskScore}%</strong></div>
+        <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+          <strong>Security Issues Detected:</strong>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            ${factorsList}
+          </ul>
         </div>
       </div>
-      <div style="display: flex; gap: 10px; margin-top: 10px;">
-        <button id="phishing-leave-site" style="
-          background: white;
-          color: #ff6b6b;
+      
+      ${aiInsight}
+      
+      <div style="font-size: 14px; color: #888; margin: 20px 0; line-height: 1.5;">
+        This website has been blocked because it shows characteristics commonly associated with phishing attacks.
+        Continuing could put your personal information at risk.
+      </div>
+      
+      <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 30px;">
+        <button id="phishing-go-back" style="
+          background: #2ed573;
+          color: white;
           border: none;
-          padding: 10px 20px;
-          border-radius: 4px;
+          padding: 15px 30px;
+          border-radius: 8px;
           cursor: pointer;
           font-weight: 600;
-          font-size: 14px;
-          transition: transform 0.2s;
-        ">← Leave Site</button>
+          font-size: 16px;
+          transition: all 0.2s;
+          box-shadow: 0 4px 12px rgba(46,213,115,0.3);
+        ">← Go Back Safely</button>
+        
         <button id="phishing-view-details" style="
-          background: rgba(255,255,255,0.2);
+          background: rgba(255,255,255,0.1);
           color: white;
-          border: 1px solid rgba(255,255,255,0.5);
-          padding: 10px 20px;
-          border-radius: 4px;
+          border: 1px solid rgba(255,255,255,0.3);
+          padding: 15px 30px;
+          border-radius: 8px;
           cursor: pointer;
-          font-size: 14px;
-          transition: background 0.2s;
-        ">View Details</button>
-        <button id="phishing-dismiss-warning" style="
-          background: transparent;
-          color: white;
-          border: 1px solid white;
-          padding: 10px 20px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 14px;
-          transition: opacity 0.2s;
-        ">Continue Anyway</button>
+          font-size: 16px;
+          transition: all 0.2s;
+        ">📊 View Details</button>
+      </div>
+      
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <details style="color: #888; cursor: pointer;">
+          <summary style="font-size: 14px; margin-bottom: 15px;">⚠️ Advanced: Bypass Protection (Not Recommended)</summary>
+          <div style="text-align: left; background: rgba(255,0,0,0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+            <p style="margin: 0 0 10px 0; color: #ff6b6b; font-weight: bold;">WARNING: Proceeding is dangerous!</p>
+            <p style="margin: 0 0 15px 0; font-size: 13px; line-height: 1.4;">This site has a ${riskScore}% risk score. Bypassing protection could expose you to:</p>
+            <ul style="font-size: 13px; margin: 0 0 15px 20px; line-height: 1.4;">
+              <li>Identity theft and credential harvesting</li>
+              <li>Financial fraud and unauthorized transactions</li>
+              <li>Malware installation and system compromise</li>
+            </ul>
+            <button id="phishing-bypass-warning" style="
+              background: #ff4757;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 14px;
+              font-weight: 600;
+              transition: all 0.2s;
+            ">I Understand the Risks - Proceed Anyway</button>
+          </div>
+        </details>
       </div>
     </div>
   `;
   
-  document.body.insertBefore(banner, document.body.firstChild);
+  // Insert overlay as first child to ensure it's on top
+  document.body.insertBefore(overlay, document.body.firstChild);
+  blockingOverlay = overlay;
   
   // Add event listeners
-  document.getElementById('phishing-leave-site').addEventListener('click', () => {
-    window.history.back();
-    // If no history, go to new tab page
-    setTimeout(() => {
-      if (window.location.href === banner.dataset.originalUrl) {
-        window.location.href = 'about:blank';
-      }
-    }, 100);
+  document.getElementById('phishing-go-back').addEventListener('click', () => {
+    // Try to go back in history
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      // No history, close tab or go to safe page
+      window.location.href = 'about:blank';
+    }
   });
   
   document.getElementById('phishing-view-details').addEventListener('click', () => {
-    // Open popup with details
+    // Open extension popup with detailed analysis
     chrome.runtime.sendMessage({ type: 'OPEN_POPUP' });
   });
   
-  document.getElementById('phishing-dismiss-warning').addEventListener('click', () => {
-    banner.style.animation = 'slideDown 0.3s ease-out reverse';
-    setTimeout(() => banner.remove(), 300);
+  document.getElementById('phishing-bypass-warning').addEventListener('click', () => {
+    // Log bypass attempt
+    chrome.runtime.sendMessage({
+      type: 'SECURITY_BYPASS',
+      url: window.location.href,
+      riskScore: riskScore,
+      timestamp: new Date().toISOString()
+    });
     
-    // Remember user's choice for this session
-    sessionStorage.setItem('phishing-warning-dismissed', 'true');
+    // Remember bypass for this session
+    sessionStorage.setItem('phishing-bypass-' + window.location.hostname, 'true');
+    
+    // Remove overlay and restore page
+    overlay.style.animation = 'fadeIn 0.3s ease-out reverse';
+    setTimeout(() => {
+      overlay.remove();
+      document.body.style.cssText = originalBodyStyle;
+      isBlocked = false;
+      blockingOverlay = null;
+    }, 300);
   });
   
-  // Store original URL for back button logic
-  banner.dataset.originalUrl = window.location.href;
+  // Prevent page interactions while blocked
+  const preventInteraction = (e) => {
+    if (e.target.closest('#phishing-blocking-overlay')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  };
+  
+  // Block all page interactions except overlay
+  document.addEventListener('click', preventInteraction, true);
+  document.addEventListener('keydown', preventInteraction, true);
+  document.addEventListener('keyup', preventInteraction, true);
+  document.addEventListener('mousedown', preventInteraction, true);
+  document.addEventListener('mouseup', preventInteraction, true);
+  
+  // Store event listeners for cleanup
+  overlay.preventInteraction = preventInteraction;
 }
 
 // Report performance metrics
@@ -694,11 +792,11 @@ async function analyzePage() {
   
   performanceMonitor.end('riskCalculation');
   
-  // Show warning for high-risk sites
-  if (finalRiskScore >= 60) {
-    performanceMonitor.start('warningBanner');
-    injectWarningBanner(finalRiskScore, features.riskFactors);
-    performanceMonitor.end('warningBanner');
+  // Block high-risk sites
+  if (finalRiskScore > RISK_THRESHOLD) {
+    performanceMonitor.start('blockingSite');
+    blockHighRiskSite(finalRiskScore, features.riskFactors, aiAnalysis);
+    performanceMonitor.end('blockingSite');
     
     // Report to backend
     reportToBackend(features, finalRiskScore, aiAnalysis);
@@ -760,7 +858,7 @@ async function analyzePage() {
   try {
     if (chrome && chrome.storage && chrome.storage.local) {
       chrome.storage.local.set({
-        [features.hostname]: {
+        [features.storageKey]: {
           riskScore: finalRiskScore,
           traditionalScore: traditionalScore,
           features: features,
