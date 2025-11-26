@@ -37,8 +37,10 @@ An advanced Chrome extension that combines traditional pattern recognition with 
 - **Hybrid Scoring**: Combines both approaches for maximum accuracy (Traditional 60% + AI 40%)
 
 ### 🛡️ **Real-time Protection**
+- **Pre-loading Block**: Prevents high-risk sites from loading completely
 - **Instant Analysis**: Sub-50ms detection on page load
 - **Visual Indicators**: Color-coded risk badges and detailed warnings
+- **Professional Blocking Page**: Clean warning interface with user options
 - **Browser Integration**: Seamless Chrome extension with popup and dashboard
 - **Offline Capable**: Traditional detection works without internet
 
@@ -49,10 +51,13 @@ An advanced Chrome extension that combines traditional pattern recognition with 
 - **Export Functionality**: Save scan history for security audits
 
 ### 🎯 **Advanced Detection Capabilities**
+- **Pre-navigation Blocking**: Intercepts and blocks risky URLs before page loads
+- **Pattern-based Screening**: Real-time URL analysis for known phishing indicators
 - **Phishing Patterns**: Detects credential harvesting attempts
 - **Brand Impersonation**: Identifies fake versions of legitimate sites
 - **URL Manipulation**: Catches homograph attacks and suspicious redirects
 - **Content Analysis**: AI-powered examination of page text and structure
+- **User Override Options**: Professional warning with safe exit or informed proceed
 
 
 ## 🚀 Installation & Setup
@@ -152,13 +157,16 @@ The extension works independently, but you can optionally set up the backend ser
 ai-phishing-detector/
 ├── 📂 extension/                    # Chrome Extension (Manifest V3)
 │   ├── 📄 manifest.json            # Extension configuration & permissions
-│   ├── 🔧 background.js            # Service worker & message handling
+│   ├── 🔧 background.js            # Service worker & pre-loading protection
+│   ├── 🛡️ blocked.html             # Professional blocking warning page
+│   ├── ⚠️ blocked.js               # Blocking page functionality
 │   ├── 🕵️ content.js               # Page analysis & detection engine
 │   ├── 🤖 gemini-api.js            # Google Gemini AI integration
 │   ├── 🎨 popup.html               # Extension popup interface
 │   ├── ⚡ popup.js                 # Popup functionality & interactions
 │   ├── 📊 dashboard.html           # Comprehensive security dashboard
-│   └── 🎯 dashboard.js             # Dashboard data & visualization
+│   ├── 🎯 dashboard.js             # Dashboard data & visualization
+│   └── 🧪 test-blocking.html       # Testing file for blocking feature
 │
 ├── 🧪 tests/                       # Comprehensive Test Suite
 │   ├── 📦 package.json             # Test dependencies & scripts
@@ -206,12 +214,17 @@ ai-phishing-detector/
 3. **Confidence Assessment**: AI-generated confidence scores and threat categorization
 4. **Hybrid Scoring**: 60% traditional + 40% AI for optimal accuracy
 
-### **Detection Workflow**
+### **Enhanced Protection Workflow**
 ```
-Page Load → Traditional Analysis → AI Analysis (if enabled) → Hybrid Score → User Alert
-     ↓              ↓                    ↓                    ↓            ↓
-   <50ms         15 factors        Brand detection      0-100 score    Visual warning
+Navigation Request → URL Pre-screening → Block/Allow Decision → Page Analysis (if allowed)
+        ↓                   ↓                    ↓                        ↓
+    Instant             Pattern matching      Block page or        Traditional + AI analysis
+                       Brand indicators       Continue loading          Visual warnings
 ```
+
+**Two-Layer Protection:**
+1. **Pre-loading Shield**: Blocks obvious threats before any content loads
+2. **Content Analysis**: Deep scanning of allowed pages for subtle threats
 
 ## 📊 Performance Metrics
 
@@ -226,10 +239,12 @@ Page Load → Traditional Analysis → AI Analysis (if enabled) → Hybrid Score
 ## 🚀 Usage Guide
 
 ### **Basic Operation**
-1. **Automatic Scanning**: Extension analyzes every page you visit
-2. **Visual Indicators**: Badge color indicates risk level (🟢 Safe, 🟡 Medium, 🔴 High)
-3. **Detailed Analysis**: Click extension icon for comprehensive report
-4. **Dashboard Access**: View scan history and security statistics
+1. **Pre-loading Protection**: High-risk sites blocked before loading
+2. **Automatic Scanning**: Extension analyzes every page you visit
+3. **Visual Indicators**: Badge color indicates risk level (🟢 Safe, 🟡 Medium, 🔴 High)
+4. **Professional Warnings**: Clean blocking interface with user options
+5. **Detailed Analysis**: Click extension icon for comprehensive report
+6. **Dashboard Access**: View scan history and security statistics
 
 ### **Risk Levels**
 - 🟢 **Low Risk (0-30)**: Safe to proceed
