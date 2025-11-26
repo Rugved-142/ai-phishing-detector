@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Phishing Detector",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "description": "Protect yourself from phishing with AI-powered detection",
   
   "action": {
@@ -25,7 +25,8 @@
   
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "webNavigation"
   ],
   
   "host_permissions": [
@@ -36,7 +37,7 @@
   
   "web_accessible_resources": [
     {
-      "resources": ["gemini-api.js", "dashboard.html", "dashboard.js"],
+      "resources": ["gemini-api.js", "dashboard.html", "dashboard.js", "blocked.html", "blocked.js"],
       "matches": ["<all_urls>"]
     }
   ]

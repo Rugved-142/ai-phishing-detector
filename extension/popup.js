@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const aiInsightText = document.getElementById('aiInsightText');
   const threatDetails = document.getElementById('threatDetails');
   const riskFactors = document.getElementById('riskFactors');
+  const securityStatus = document.getElementById('securityStatus');
   const rescanBtn = document.getElementById('rescanBtn');
   const reportBtn = document.getElementById('reportBtn');
   const dashboardBtn = document.getElementById('dashboardBtn');
@@ -32,18 +33,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Get current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   
-  // Check if URL can be analyzed
+  // Check if URL can be analyzed (allow file:// for testing)
   const canAnalyze = tab.url && 
     !tab.url.startsWith('chrome://') && 
     !tab.url.startsWith('chrome-extension://') && 
     !tab.url.startsWith('moz-extension://') && 
     !tab.url.startsWith('edge://') && 
-    !tab.url.startsWith('about:') && 
-    !tab.url.startsWith('file://');
+    !tab.url.startsWith('about:');
   
   if (canAnalyze) {
     try {
-      urlDisplay.textContent = new URL(tab.url).hostname;
+      if (tab.url.startsWith('file://')) {
+        // Special handling for local test files
+        const filename = tab.url.split('/').pop();
+        urlDisplay.textContent = `Test File: ${filename}`;
+      } else {
+        urlDisplay.textContent = new URL(tab.url).hostname;
+      }
     } catch (e) {
       urlDisplay.textContent = 'Invalid URL';
     }
@@ -56,11 +62,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   async function loadAnalysis() {
     try {
-      const hostname = new URL(tab.url).hostname;
-      const result = await chrome.storage.local.get([hostname]);
+      let storageKey;
+      if (tab.url.startsWith('file://')) {
+        // For file:// URLs, use the full path as key
+        storageKey = tab.url;
+      } else {
+        storageKey = new URL(tab.url).hostname;
+      }
       
-      if (result[hostname]) {
-        displayAnalysis(result[hostname]);
+      const result = await chrome.storage.local.get([storageKey]);
+      
+      if (result[storageKey]) {
+        displayAnalysis(result[storageKey]);
       } else {
         // No analysis available for this site yet
         displayNoAnalysis();
@@ -80,6 +93,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     riskScoreText.textContent = `${riskScore}%`;
     updateRiskMeter(riskScore);
     
+    // Check if site is currently blocked (risk score > 60)
+    const isBlocked = riskScore > 60;
+    
     // Update risk label and description
     if (riskScore < 30) {
       riskLabel.textContent = 'Safe';
@@ -93,6 +109,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       riskLabel.textContent = 'Dangerous';
       riskLabel.className = 'risk-label danger';
       riskDescription.textContent = 'High risk of phishing or scam';
+    }
+    
+    // Show security status for blocked sites
+    if (isBlocked) {
+      securityStatus.style.display = 'block';
+      
+      // Check if user bypassed the block for this session
+      chrome.tabs.executeScript(tab.id, {
+        code: `sessionStorage.getItem('phishing-bypass-${new URL('${tab.url}').hostname}') === 'true'`
+      }, (result) => {
+        const isBypassed = result && result[0];
+        const statusText = securityStatus.querySelector('.status-text');
+        
+        if (isBypassed) {
+          statusText.innerHTML = '<strong>Security Bypassed</strong><span>User chose to proceed with caution</span>';
+          securityStatus.style.borderColor = '#f39c12';
+        } else {
+          statusText.innerHTML = '<strong>Site Blocked</strong><span>High-risk content detected</span>';
+        }
+      });
+    } else {
+      securityStatus.style.display = 'none';
     }
     
     // AI Insight

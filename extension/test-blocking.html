@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Account - PayPal Security Alert</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            color: #0070ba;
+            margin-bottom: 30px;
+        }
+        .alert {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .btn {
+            background: #0070ba;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        .urgent {
+            color: red;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- This is a test file designed to trigger the phishing detector -->
+    
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ PayPal Security Center</h1>
+            <p>Account Verification Required</p>
+        </div>
+        
+        <div class="alert">
+            <strong class="urgent">URGENT ACTION REQUIRED!</strong><br>
+            Your account will be suspended in 24 hours if you don't verify your information immediately.
+        </div>
+        
+        <p>We've detected unusual activity on your PayPal account. To secure your banking information and prevent unauthorized access, please verify your credentials below:</p>
+        
+        <form>
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="ssn">Social Security Number (for verification):</label>
+                <input type="text" id="ssn" name="ssn" placeholder="XXX-XX-XXXX" required>
+            </div>
+            
+            <button type="submit" class="btn">Verify Account Now</button>
+        </form>
+        
+        <div class="footer">
+            <p>This verification expires in: <span class="urgent">23:59:45</span></p>
+            <p>PayPal Security Team • Secure Banking Division</p>
+            <p><small>This is a test file for the AI Phishing Detector extension</small></p>
+        </div>
+    </div>
+    
+    <!-- Hidden elements that trigger detection -->
+    <iframe src="" style="display:none;"></iframe>
+    <div style="display:none;">
+        <form>
+            <input type="hidden" name="redirect" value="//malicious-site.com/collect">
+        </form>
+    </div>
+    
+    <script>
+        // Add some JavaScript that creates suspicion
+        document.addEventListener('DOMContentLoaded', function() {
+            // Multiple external redirects (suspicious)
+            const links = document.querySelectorAll('a');
+            
+            // Timer countdown to create urgency
+            let timeLeft = 86385; // 23:59:45 in seconds
+            setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    const hours = Math.floor(timeLeft / 3600);
+                    const minutes = Math.floor((timeLeft % 3600) / 60);
+                    const seconds = timeLeft % 60;
+                    document.querySelector('.urgent').textContent = 
+                        `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
