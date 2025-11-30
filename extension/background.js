@@ -23,11 +23,29 @@ const RISKY_PATTERNS = [
   /pan.*card.*(?!incometaxindiaefiling\.gov\.in)/i,
   /gst.*(?!gst\.gov\.in)/i,
   
-  // Government impersonation (Global)
+  // Government impersonation (US)
   /irs.*(?!irs\.gov)/i,
   /social.*security.*(?!ssa\.gov)/i,
-  /dmv.*(?!dmv\.(gov|ca\.gov))/i,
+  /dmv.*(?!dmv\.(gov|ca\.gov|ny\.gov))/i,
+  /medicare.*(?!medicare\.gov)/i,
+  /treasury.*(?!treasury\.gov)/i,
+  /usps.*(?!usps\.com)/i,
+  
+  // Government impersonation (UK)
   /nhs.*(?!nhs\.uk)/i,
+  /hmrc.*(?!hmrc\.gov\.uk)/i,
+  /dvla.*(?!dvla\.gov\.uk)/i,
+  /gov.*uk.*(?!gov\.uk)/i,
+  
+  // Government impersonation (Canada)
+  /canada.*(?!canada\.ca)/i,
+  /cra.*(?!cra-arc\.gc\.ca)/i,
+  /service.*canada.*(?!servicecanada\.gc\.ca)/i,
+  
+  // Government impersonation (Australia)
+  /ato.*(?!ato\.gov\.au)/i,
+  /centrelink.*(?!centrelink\.gov\.au)/i,
+  /australia.*gov.*(?!australia\.gov\.au)/i,
   
   // Suspicious TLD combinations
   /\.(tk|ml|ga|cf)\/.*(?:login|verify|secure|account)/i,
@@ -92,6 +110,7 @@ function isHighRiskURL(url) {
     
     // Whitelist legitimate government domains first
     const legitimateGovDomains = [
+      // Indian Government
       'parivahan.gov.in',
       'sarathi.parivahan.gov.in', 
       'vahan.parivahan.gov.in',
@@ -100,11 +119,65 @@ function isHighRiskURL(url) {
       'passportindia.gov.in',
       'gst.gov.in',
       'epfindia.gov.in',
+      'indiapost.gov.in',
+      'mygov.in',
+      'india.gov.in',
+      'digitalindia.gov.in',
+      'eci.gov.in',
+      'railway.gov.in',
+      'irctc.co.in',
+      'sbi.co.in',
+      'pnb.co.in',
+      'bankofbaroda.co.in',
+      
+      // US Government  
       'irs.gov',
       'ssa.gov',
-      'nhs.uk',
+      'usa.gov',
+      'treasury.gov',
+      'state.gov',
+      'dhs.gov',
+      'cdc.gov',
+      'fda.gov',
+      'usps.com',
+      'dmv.ca.gov',
+      'dmv.ny.gov',
+      'medicare.gov',
+      'studentaid.gov',
+      
+      // UK Government
       'gov.uk',
-      'usa.gov'
+      'nhs.uk',
+      'hmrc.gov.uk',
+      'dvla.gov.uk',
+      'passport.service.gov.uk',
+      'tax.service.gov.uk',
+      
+      // Canada Government
+      'canada.ca',
+      'cra-arc.gc.ca',
+      'servicecanada.gc.ca',
+      'passport.gc.ca',
+      
+      // Australia Government
+      'gov.au',
+      'ato.gov.au',
+      'centrelink.gov.au',
+      'australia.gov.au',
+      'passports.gov.au',
+      
+      // European Government
+      'service-public.fr',
+      'impots.gouv.fr',
+      'bundesfinanzministerium.de',
+      'elster.de',
+      'agenziaentrate.gov.it',
+      
+      // Other Major Countries
+      'gov.sg',
+      'iras.gov.sg',
+      'gov.hk',
+      'ird.gov.hk'
     ];
     
     // Never block legitimate government sites
