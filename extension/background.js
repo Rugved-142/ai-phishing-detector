@@ -2,6 +2,7 @@
 
 // Known phishing patterns and risky domains
 const RISKY_PATTERNS = [
+  // Brand impersonation
   /paypal.*[^\w](com|net|org)/i,
   /microsoft.*security/i,
   /amazon.*verification/i,
@@ -10,15 +11,55 @@ const RISKY_PATTERNS = [
   /facebook.*security/i,
   /[^\w]paypal[^\w]/i,
   /secure.*bank/i,
-  /verify.*account/i
+  /verify.*account/i,
+  
+  // Government impersonation (India)
+  /parivahan.*(?!gov\.in)/i,
+  /echallan.*(?!gov\.in)/i,
+  /epay.*(?!gov\.in)/i,
+  /income.*tax.*(?!gov\.in)/i,
+  /aadhaar.*(?!uidai\.gov\.in)/i,
+  /passport.*(?!passportindia\.gov\.in)/i,
+  /pan.*card.*(?!incometaxindiaefiling\.gov\.in)/i,
+  /gst.*(?!gst\.gov\.in)/i,
+  
+  // Government impersonation (Global)
+  /irs.*(?!irs\.gov)/i,
+  /social.*security.*(?!ssa\.gov)/i,
+  /dmv.*(?!dmv\.(gov|ca\.gov))/i,
+  /nhs.*(?!nhs\.uk)/i,
+  
+  // Suspicious TLD combinations
+  /\.(tk|ml|ga|cf)\/.*(?:login|verify|secure|account)/i,
+  /\.(top|click|download)\/.*(?:government|official|secure)/i
 ];
 
 const SUSPICIOUS_DOMAINS = [
+  // URL shorteners
   'bit.ly',
   'tinyurl.com',
   'shortlink',
+  't.co',
+  'ow.ly',
+  
+  // Common phishing indicators
   'secure-bank',
-  'paypal-security'
+  'paypal-security',
+  'parivahan-sin',
+  'echallan-pay',
+  'income-tax-gov',
+  'aadhaar-update',
+  
+  // Suspicious TLDs frequently used in phishing
+  '.tk',
+  '.ml',
+  '.ga',
+  '.cf',
+  '.top',
+  '.click',
+  '.download',
+  '.work',
+  '.party'
 ];
 
 // Pre-screen URLs before loading
@@ -49,6 +90,30 @@ function isHighRiskURL(url) {
     const hostname = urlObj.hostname.toLowerCase();
     const fullUrl = url.toLowerCase();
     
+    // Whitelist legitimate government domains first
+    const legitimateGovDomains = [
+      'parivahan.gov.in',
+      'sarathi.parivahan.gov.in', 
+      'vahan.parivahan.gov.in',
+      'incometaxindiaefiling.gov.in',
+      'uidai.gov.in',
+      'passportindia.gov.in',
+      'gst.gov.in',
+      'epfindia.gov.in',
+      'irs.gov',
+      'ssa.gov',
+      'nhs.uk',
+      'gov.uk',
+      'usa.gov'
+    ];
+    
+    // Never block legitimate government sites
+    for (const legit of legitimateGovDomains) {
+      if (hostname.endsWith(legit)) {
+        return false;
+      }
+    }
+    
     // For testing: Check file:// URLs for blocking patterns
     if (url.startsWith('file://')) {
       if (fullUrl.includes('test-blocking.html') || 
@@ -77,11 +142,38 @@ function isHighRiskURL(url) {
     if (hostname.includes('secure-') || 
         hostname.includes('-secure') ||
         hostname.includes('verification') ||
-        hostname.includes('account-update') ||
-        (hostname.includes('paypal') && !hostname.endsWith('paypal.com')) ||
+        hostname.includes('account-update')) {
+      return true;
+    }
+    
+    // Brand impersonation checks
+    if ((hostname.includes('paypal') && !hostname.endsWith('paypal.com')) ||
         (hostname.includes('amazon') && !hostname.endsWith('amazon.com')) ||
         (hostname.includes('microsoft') && !hostname.endsWith('microsoft.com'))) {
       return true;
+    }
+    
+    // Government domain impersonation (India)
+    if ((hostname.includes('parivahan') && !hostname.endsWith('parivahan.gov.in')) ||
+        (hostname.includes('echallan') && !hostname.endsWith('parivahan.gov.in')) ||
+        (hostname.includes('incometax') && !hostname.endsWith('incometaxindiaefiling.gov.in')) ||
+        (hostname.includes('aadhaar') && !hostname.endsWith('uidai.gov.in')) ||
+        (hostname.includes('epfo') && !hostname.endsWith('epfindia.gov.in'))) {
+      return true;
+    }
+    
+    // Suspicious TLD check for government-like domains
+    const suspiciousTLDs = ['.top', '.tk', '.ml', '.ga', '.cf', '.click', '.download'];
+    const governmentKeywords = ['gov', 'official', 'portal', 'parivahan', 'echallan', 'income', 'tax'];
+    
+    for (const tld of suspiciousTLDs) {
+      if (hostname.endsWith(tld)) {
+        for (const keyword of governmentKeywords) {
+          if (hostname.includes(keyword)) {
+            return true;
+          }
+        }
+      }
     }
     
     return false;
