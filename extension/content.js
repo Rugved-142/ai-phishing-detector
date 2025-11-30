@@ -210,7 +210,11 @@ function detectSuspiciousPatterns() {
   const suspiciousWords = [
     'verify', 'account', 'secure', 'update', 'suspend',
     'confirm', 'banking', 'paypal', 'amazon', 'microsoft',
-    'refund', 'locked', 'expired', 'validate', 'restore'
+    'refund', 'locked', 'expired', 'validate', 'restore',
+    // Government impersonation terms
+    'challan', 'fine', 'penalty', 'violation', 'traffic',
+    'licence', 'registration', 'vehicle', 'driving',
+    'aadhaar', 'pan card', 'passport', 'voter id'
   ];
   
   // Urgency indicators that create pressure
@@ -229,8 +233,20 @@ function detectSuspiciousPatterns() {
   let urgencyCount = 0;
   let financialCount = 0;
   
-  // Check URL and page content for patterns
+  // Check URL and page content for patterns (but exclude legitimate government sites)
+  const currentHostname = window.location.hostname.toLowerCase();
+  const isLegitGovSite = legitimateGovSites.some(domain => currentHostname.endsWith(domain));
+  
   suspiciousWords.forEach(word => {
+    // Don't count government terms as suspicious on legitimate government sites
+    const isGovTerm = ['challan', 'fine', 'penalty', 'violation', 'traffic', 
+                      'licence', 'registration', 'vehicle', 'driving',
+                      'aadhaar', 'pan card', 'passport', 'voter id'].includes(word);
+    
+    if (isGovTerm && isLegitGovSite) {
+      return; // Skip counting government terms on legitimate sites
+    }
+    
     if (url.includes(word) || pageText.includes(word)) {
       suspiciousCount++;
     }
@@ -250,8 +266,27 @@ function detectSuspiciousPatterns() {
   
   // Check for common phishing URL patterns
   const hasDoubleSlash = url.includes('//') && url.indexOf('//') > 8;
-  const hasMisleadingDomain = /\.(tk|ml|ga|cf)$/.test(window.location.hostname);
+  const hasMisleadingDomain = /\.(tk|ml|ga|cf|top|click|download)$/.test(window.location.hostname);
   const hasHomograph = /[а-яА-Я]/.test(url); // Cyrillic characters
+  
+  // Government impersonation patterns - but exclude legitimate sites
+  const hostname = window.location.hostname.toLowerCase();
+  const legitimateGovSites = [
+    'parivahan.gov.in', 'sarathi.parivahan.gov.in', 'vahan.parivahan.gov.in',
+    'incometaxindiaefiling.gov.in', 'uidai.gov.in', 'passportindia.gov.in',
+    'gst.gov.in', 'epfindia.gov.in'
+  ];
+  
+  let hasGovImpersonation = false;
+  
+  // Only flag as impersonation if it's not a legitimate government site
+  const isLegitimateGov = legitimateGovSites.some(domain => hostname.endsWith(domain));
+  
+  if (!isLegitimateGov) {
+    hasGovImpersonation = (/parivahan|echallan|challan/i.test(url) && !/\.gov\.in/i.test(url)) ||
+                          (/income.*tax|incometax/i.test(url) && !/\.gov\.in/i.test(url)) ||
+                          (/aadhaar|uidai/i.test(url) && !/\.gov\.in/i.test(url));
+  }
   
   const features = {
     suspiciousWordCount: suspiciousCount,
@@ -262,7 +297,8 @@ function detectSuspiciousPatterns() {
     hasFinancialTerms: financialCount > 0,
     hasDoubleSlash: hasDoubleSlash,
     hasMisleadingDomain: hasMisleadingDomain,
-    hasHomograph: hasHomograph
+    hasHomograph: hasHomograph,
+    hasGovImpersonation: hasGovImpersonation
   };
   
   performanceMonitor.end('patternDetection');
@@ -394,6 +430,10 @@ function calculateWeightedRisk(features) {
   if (features.hasHomograph) {
     score += 20;
     riskFactors.push('Contains lookalike characters');
+  }
+  if (features.hasGovImpersonation) {
+    score += 30;
+    riskFactors.push('Government domain impersonation detected');
   }
   
   // High risk factors (10-15 points)
