@@ -241,7 +241,9 @@ function detectSuspiciousPatterns() {
     // Don't count government terms as suspicious on legitimate government sites
     const isGovTerm = ['challan', 'fine', 'penalty', 'violation', 'traffic', 
                       'licence', 'registration', 'vehicle', 'driving',
-                      'aadhaar', 'pan card', 'passport', 'voter id'].includes(word);
+                      'aadhaar', 'pan card', 'passport', 'voter id',
+                      'tax refund', 'medicare', 'social security', 'benefits',
+                      'centrelink', 'pension', 'disability', 'unemployment'].includes(word);
     
     if (isGovTerm && isLegitGovSite) {
       return; // Skip counting government terms on legitimate sites
@@ -272,9 +274,31 @@ function detectSuspiciousPatterns() {
   // Government impersonation patterns - but exclude legitimate sites
   const hostname = window.location.hostname.toLowerCase();
   const legitimateGovSites = [
+    // Indian Government
     'parivahan.gov.in', 'sarathi.parivahan.gov.in', 'vahan.parivahan.gov.in',
     'incometaxindiaefiling.gov.in', 'uidai.gov.in', 'passportindia.gov.in',
-    'gst.gov.in', 'epfindia.gov.in'
+    'gst.gov.in', 'epfindia.gov.in', 'indiapost.gov.in', 'mygov.in',
+    'india.gov.in', 'digitalindia.gov.in', 'eci.gov.in', 'railway.gov.in',
+    'irctc.co.in', 'sbi.co.in', 'pnb.co.in', 'bankofbaroda.co.in',
+    
+    // US Government
+    'irs.gov', 'ssa.gov', 'usa.gov', 'treasury.gov', 'state.gov',
+    'dhs.gov', 'cdc.gov', 'fda.gov', 'usps.com', 'dmv.ca.gov',
+    'dmv.ny.gov', 'medicare.gov', 'studentaid.gov',
+    
+    // UK Government
+    'gov.uk', 'nhs.uk', 'hmrc.gov.uk', 'dvla.gov.uk',
+    'passport.service.gov.uk', 'tax.service.gov.uk',
+    
+    // Canada Government
+    'canada.ca', 'cra-arc.gc.ca', 'servicecanada.gc.ca', 'passport.gc.ca',
+    
+    // Australia Government
+    'gov.au', 'ato.gov.au', 'centrelink.gov.au', 'australia.gov.au',
+    'passports.gov.au',
+    
+    // Other Major Countries
+    'gov.sg', 'iras.gov.sg', 'gov.hk', 'ird.gov.hk'
   ];
   
   let hasGovImpersonation = false;
@@ -283,9 +307,30 @@ function detectSuspiciousPatterns() {
   const isLegitimateGov = legitimateGovSites.some(domain => hostname.endsWith(domain));
   
   if (!isLegitimateGov) {
-    hasGovImpersonation = (/parivahan|echallan|challan/i.test(url) && !/\.gov\.in/i.test(url)) ||
-                          (/income.*tax|incometax/i.test(url) && !/\.gov\.in/i.test(url)) ||
-                          (/aadhaar|uidai/i.test(url) && !/\.gov\.in/i.test(url));
+    hasGovImpersonation = 
+      // Indian government impersonation
+      (/parivahan|echallan|challan/i.test(url) && !/\.gov\.in/i.test(url)) ||
+      (/income.*tax|incometax/i.test(url) && !/\.gov\.in/i.test(url)) ||
+      (/aadhaar|uidai/i.test(url) && !/\.gov\.in/i.test(url)) ||
+      (/epfo|pf.*account/i.test(url) && !/\.gov\.in/i.test(url)) ||
+      
+      // US government impersonation
+      (/irs/i.test(url) && !/irs\.gov/i.test(url)) ||
+      (/social.*security/i.test(url) && !/ssa\.gov/i.test(url)) ||
+      (/medicare/i.test(url) && !/medicare\.gov/i.test(url)) ||
+      (/dmv/i.test(url) && !/dmv\.(gov|ca\.gov|ny\.gov)/i.test(url)) ||
+      
+      // UK government impersonation
+      (/nhs/i.test(url) && !/nhs\.uk/i.test(url)) ||
+      (/hmrc/i.test(url) && !/hmrc\.gov\.uk/i.test(url)) ||
+      (/dvla/i.test(url) && !/dvla\.gov\.uk/i.test(url)) ||
+      
+      // Canada government impersonation
+      (/canada.*revenue|cra/i.test(url) && !/cra-arc\.gc\.ca|canada\.ca/i.test(url)) ||
+      
+      // Australia government impersonation
+      (/ato/i.test(url) && !/ato\.gov\.au/i.test(url)) ||
+      (/centrelink/i.test(url) && !/centrelink\.gov\.au/i.test(url));
   }
   
   const features = {
