@@ -27,7 +27,7 @@ An advanced Chrome extension that combines traditional pattern recognition with 
 - **Jest**: JavaScript testing framework
 - **JSDOM**: DOM environment simulation for testing
 - **Chrome API Mocking**: Complete extension functionality testing
-- **Test Cases**: 100% critical path coverage
+- **Test Cases**: 71 passing tests across 5 test suites with comprehensive coverage
 
 ## ✨ Key Features
 
@@ -38,7 +38,7 @@ An advanced Chrome extension that combines traditional pattern recognition with 
 
 ### 🛡️ **Real-time Protection**
 - **Pre-loading Block**: Prevents high-risk sites from loading completely
-- **Instant Analysis**: Sub-50ms detection on page load
+- **Instant Analysis**: Fast detection on page load (typically <100ms)
 - **Visual Indicators**: Color-coded risk badges and detailed warnings
 - **Professional Blocking Page**: Clean warning interface with user options
 - **Browser Integration**: Seamless Chrome extension with popup and dashboard
@@ -229,10 +229,10 @@ Navigation Request → URL Pre-screening → Block/Allow Decision → Page Analy
 ## 📊 Performance Metrics
 
 ### **Speed & Efficiency**
-- ⚡ **Analysis Time**: < 50ms average per page
+- ⚡ **Analysis Time**: Fast page scanning (typically <100ms)
 - 🔍 **Risk Factors**: 20+ indicators analyzed
-- 🎯 **Accuracy**: 95%+ with hybrid AI+traditional approach
-- 💾 **Memory Usage**: < 5MB extension footprint
+- 🎯 **Accuracy**: High accuracy with hybrid AI+traditional approach
+- 💾 **Memory Usage**: Lightweight extension footprint (<5MB)
 - 🌐 **Offline Capable**: Traditional detection works without internet
 
 
